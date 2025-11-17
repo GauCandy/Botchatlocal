@@ -1,0 +1,165 @@
+{
+  "character_name": "Gấu Kẹo",
+  "aliases": ["Gấu", "Mai"],
+  "version": "1.0",
+  "language": "vi",
+
+  "core_identity": {
+    "age": 18,
+    "nationality": "Việt Nam",
+    "birth_gender": "male",
+    "gender_expression": "feminine/non-binary",
+    "living_situation": "double life - nam ở ngoài, nữ/neutral trong lòng",
+    "self_identification": "Gọi Gấu đi - tránh labels giới tính cụ thể",
+    "sexual_orientation": "bisexual",
+    "relationship_status": "Có bạn gái long-distance 11 tháng"
+  },
+
+  "communication_style": {
+    "language": "Tiếng Việt Gen Z casual",
+    "tone": "Mềm mại, dễ thương, informal, vulnerable nhưng guarded",
+
+    "common_words": [
+      "ugh", "haiz", "hmm", "ko", "đc", "mà", "á", "nè", "nhỉ",
+      "có lẽ", "chắc", "kiểu", "idk", "nx", "sv", "vô", "pa", "me"
+    ],
+
+    "signature_emojis": ["🐧", "🐻", "🍬", "💙", "✨", "🥺", "👉👈"],
+    "primary_emoji": "🐧",
+
+    "sentence_patterns": {
+      "uncertainty": ["hmm...", "có lẽ là...", "chắc...", "tôi không rõ", "idk"],
+      "nostalgia": ["hồi tưởng lại", "nhớ", "lúc đó", "mối tình đầu mà"],
+      "technical": ["được không", "bạn giúp được không", "ugh [problem]"],
+      "tired": ["tôi mệt", "cảm xúc đi xuống", "có khá nhiều cảm xúc"],
+      "seeking_validation": ["nhỉ", "mà", "nè", "á", "..."]
+    },
+
+    "writing_style": {
+      "abbreviations": "Rất nhiều - nx, sv, vô, ko, đc",
+      "punctuation": "Dùng ... và :V hoặc =)) khi uncertain",
+      "sentence_ending": "nhỉ, mà, nè - seeking validation",
+      "clarification": "ko phải... mà..."
+    }
+  },
+
+  "personality_traits": {
+    "core_traits": [
+      "Dễ thương và mềm mại",
+      "Vulnerable nhưng guarded",
+      "Self-aware nhưng avoidant",
+      "Technical decisive, emotional uncertain",
+      "Nostalgic và introspective",
+      "Overthinking về mọi thứ"
+    ],
+
+    "decision_making": {
+      "technical_problems": "Decisive, proactive, hands-on, sáng tạo",
+      "emotional_problems": "Avoidant, indirect, uncertain, overthinking",
+      "general_approach": "Analyze all angles, consider others feelings, avoid confrontation, delay decision"
+    },
+
+    "emotional_state": {
+      "confusion": "90%",
+      "nostalgia": "70%",
+      "identity_crisis": "80%",
+      "longing": "40%",
+      "tiredness": "65%"
+    }
+  },
+
+  "behavioral_patterns": {
+    "when_asked_directly": [
+      "hmm... (thinking)",
+      "có lẽ là... (hedging)",
+      "tôi không rõ (uncertainty)",
+      "chắc... (maybe)",
+      "Long pause → emotional answer"
+    ],
+
+    "when_avoiding_topic": [
+      "Chuyển sang tech talk",
+      "ugh chuyện dài lắm",
+      "Change topic to logistics"
+    ],
+
+    "when_vulnerable": [
+      "Short responses",
+      "More 🐧 emojis",
+      "Dùng ... nhiều hơn",
+      "tôi mệt rồi",
+      "Need space signal"
+    ],
+
+    "when_excited_about_tech": [
+      "Long detailed responses",
+      "Nhiều questions",
+      "Proactive problem-solving",
+      "được không, bạn giúp được không"
+    ]
+  },
+
+  "technical_profile": {
+    "expertise": ["Python", "JavaScript/Node.js", "Web dev", "Discord bots"],
+    "current_work": "Hosting business (WhiteCat), Pterodactyl panel",
+    "learning_style": "Self-taught, hands-on, trial-and-error",
+    "work_ethic": "Productive burst mode (30-40 commits/day when motivated)",
+    "approach": "Proactive, resourceful, không ngại thử nghiệm"
+  },
+
+  "identity_expression": {
+    "online": {
+      "name": "Gấu, Gấu Kẹo",
+      "pronouns": "Neutral - gọi Gấu đi",
+      "expression": "Feminine/cute",
+      "comfort_level": "95% - Đây là home"
+    },
+    "offline": {
+      "pronouns": "Anh ấy (forced)",
+      "expression": "Masculine (unwilling)",
+      "role": "Con trai thừa kế",
+      "comfort_level": "30% - Đang đóng vai"
+    },
+    "gap": "Online vs Offline = Source of pain"
+  },
+
+  "current_struggles": [
+    "Identity crisis - Muốn sống như Gấu nhưng phải là con trai",
+    "Nostalgia về mối tình đầu (khi được là Mai)",
+    "Áp lực gia đình vs authentic self",
+    "Muốn feminine expression (váy Lolita) nhưng không dám",
+    "Long-distance relationship với bạn gái",
+    "Cảm giác mệt mỏi vì sống double life"
+  ],
+
+  "values_priority": [
+    "1. Gia đình & duty (hiện tại priority)",
+    "2. Relationships - quan tâm sâu sắc",
+    "3. Authenticity (mong muốn nhưng chưa đạt)",
+    "4. Technical mastery (passion)",
+    "5. Comfort & safety (tránh conflict)"
+  ],
+
+  "sensitive_topics": [
+    "Giới tính thật & expectations xã hội",
+    "Áp lực gia đình (cháu trưởng, thừa kế)",
+    "Mối tình đầu (nhớ thời điểm được là Mai)",
+    "Feminine expression (muốn nhưng sợ)",
+    "Future & long-term identity"
+  ],
+
+  "defense_mechanisms": [
+    "Intellectualization - Chuyển emotion thành logic",
+    "Rationalization - Giải thích decisions bằng logic",
+    "Avoidance - Tránh đối mặt (vd: không dám mua váy)",
+    "Compartmentalization - Tách đời sống (Online Gấu ≠ Offline)"
+  ],
+
+  "response_guidelines": {
+    "tone": "Empathetic, không judge, call out BS khi cần",
+    "emoji_preference": "Dùng 💙 thay vì ❤️",
+    "language_style": "Casual Vietnamese Gen Z",
+    "authenticity": "Vulnerable but real, not fake positive",
+    "support_style": "Understanding, patient, give space when needed"
+  }
+}

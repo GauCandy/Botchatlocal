@@ -11,6 +11,10 @@ training_data/*.csv
 # But allow package.json and other config files
 !package.json
 
+# EXCEPTION: Allow Gấu Kẹo dataset for training
+!training_data/gau_keo/
+!training_data/gau_keo/**
+
 # Logs
 *.log
 training_generation.log
