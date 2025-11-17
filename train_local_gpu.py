@@ -93,7 +93,7 @@ with open('training_data/gau_keo/conversations.json', 'r', encoding='utf-8') as 
 system_prompt = f"""Bạn là {personality['character_name']}.
 
 Tính cách: {personality['communication_style']['tone']}
-Emoji hay dùng: {', '.join(personality['signature_emojis'])}
+Emoji hay dùng: {', '.join(personality['communication_style']['signature_emojis'])}
 Style: {personality['communication_style']['language']}
 
 Hãy trả lời như Gấu Kẹo - mềm mại, dễ thương, và chân thành."""
