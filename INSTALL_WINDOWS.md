@@ -18,20 +18,51 @@ Cần Python 3.8 trở lên. Nếu chưa có, download tại: https://www.python
 pip install --upgrade openai python-dotenv
 ```
 
-### Option B: Train với GPU Local
+### Option B: Train với GPU Local (RTX 3050/3060/4060+)
+
+**📋 Requirements:**
+- NVIDIA GPU: RTX 3050 (6GB), RTX 3060 (8-12GB), RTX 4060+ (8GB+)
+- Windows 10/11
+- NVIDIA drivers updated
+
+**Step 1: Check GPU**
 
 ```powershell
-# Cài PyTorch với CUDA support (nếu có NVIDIA GPU)
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Cài Unsloth và dependencies
-pip install unsloth transformers datasets bitsandbytes accelerate
+# Check nếu có GPU NVIDIA
+nvidia-smi
 ```
 
-**⚠️ Lưu ý:** Local GPU training cần:
-- NVIDIA GPU (RTX 3060/4060 trở lên với 8GB+ VRAM)
-- CUDA toolkit installed
-- Nếu không có GPU, dùng Option A (OpenAI) hoặc Google Colab
+Nếu lỗi "nvidia-smi not found", cài NVIDIA drivers tại: https://www.nvidia.com/download/index.aspx
+
+**Step 2: Cài PyTorch với CUDA 12.1**
+
+```powershell
+# Uninstall PyTorch cũ (nếu có)
+pip uninstall torch torchvision torchaudio -y
+
+# Cài PyTorch với CUDA 12.1 (recommended cho RTX 30xx/40xx)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+**Step 3: Verify GPU**
+
+```powershell
+# Chạy script check GPU
+python check_gpu.py
+```
+
+Phải thấy: "✅ CUDA available" và GPU name (RTX 3050/3060/etc.)
+
+**Step 4: Cài Unsloth và dependencies**
+
+```powershell
+pip install "unsloth[cu121] @ git+https://github.com/unslothai/unsloth.git"
+pip install transformers datasets trl bitsandbytes accelerate
+```
+
+**⚠️ Nếu GPU vẫn không work:**
+- Dùng OpenAI training (Option A)
+- Hoặc Google Colab miễn phí: https://colab.research.google.com/
 
 ### Option C: Cài tất cả (Full)
 

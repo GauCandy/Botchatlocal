@@ -21,14 +21,42 @@ print()
 
 # Kiểm tra GPU
 if not torch.cuda.is_available():
-    print("⚠️  CẢNH BÁO: Không tìm thấy GPU!")
-    print("   Training trên CPU sẽ RẤT CHẬM")
-    print("   Bạn có muốn tiếp tục không? (y/n)")
+    print("❌ KHÔNG TÌM THẤY GPU!")
+    print()
+    print("Có thể do:")
+    print("  1. PyTorch CPU-only version (most common)")
+    print("  2. NVIDIA drivers chưa cài")
+    print("  3. GPU bị tắt trong BIOS")
+    print()
+    print("FIX:")
+    print("  1. Chạy: python check_gpu.py")
+    print("  2. Xem hướng dẫn trong INSTALL_WINDOWS.md")
+    print()
+    print("Hoặc dùng OpenAI training: python train_openai.py")
+    print()
+    print("Có muốn tiếp tục train trên CPU? (RẤT CHẬM) (y/n)")
     if input().lower() != 'y':
         exit()
+    print()
+    print("⚠️  Training trên CPU... (có thể mất vài giờ)")
 else:
-    print(f"✓ GPU detected: {torch.cuda.get_device_name(0)}")
-    print(f"✓ VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+    gpu_name = torch.cuda.get_device_name(0)
+    vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
+    print(f"✅ GPU detected: {gpu_name}")
+    print(f"✅ VRAM: {vram_gb:.1f} GB")
+
+    # Check VRAM
+    if vram_gb < 6:
+        print()
+        print(f"⚠️  CẢNH BÁO: VRAM thấp ({vram_gb:.1f} GB)")
+        print("   Có thể gặp lỗi out of memory")
+        print("   Recommend: ít nhất 6GB VRAM")
+        print()
+        print("Tiếp tục? (y/n)")
+        if input().lower() != 'y':
+            exit()
+    elif vram_gb < 8:
+        print(f"   ⚠️  VRAM hơi thấp ({vram_gb:.1f} GB) - sẽ dùng batch size nhỏ")
 
 print()
 print("Đang cài đặt dependencies...")
