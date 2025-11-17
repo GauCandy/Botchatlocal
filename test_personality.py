@@ -34,14 +34,37 @@ print()
 if mode == "openai":
     print("☁️  Loading OpenAI model...")
 
-    from openai import OpenAI
+    try:
+        from openai import OpenAI
+    except ImportError:
+        print("❌ Chưa cài OpenAI library!")
+        print()
+        print("Chạy lệnh này:")
+        print("  pip install --upgrade openai")
+        sys.exit(1)
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         print("❌ Cần OPENAI_API_KEY!")
+        print()
+        print("Set API key:")
+        print("  $env:OPENAI_API_KEY = 'sk-proj-...'  # Windows PowerShell")
+        print("  export OPENAI_API_KEY='sk-proj-...'  # Linux/Mac")
         exit()
 
-    client = OpenAI(api_key=api_key)
+    try:
+        client = OpenAI(api_key=api_key)
+    except TypeError as e:
+        if 'proxies' in str(e):
+            print()
+            print("❌ Lỗi OpenAI library version conflict!")
+            print()
+            print("Chạy lệnh này để fix:")
+            print("  pip install --upgrade openai httpx")
+            print()
+            sys.exit(1)
+        else:
+            raise
 
     # Đọc model ID
     try:

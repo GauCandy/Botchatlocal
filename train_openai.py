@@ -6,16 +6,39 @@ Sử dụng OpenAI API để fine-tune GPT-4o-mini
 Yêu cầu:
 - API key từ OpenAI (https://platform.openai.com/api-keys)
 - Có phí ~$1-5 tùy data
-- pip install openai
+- pip install --upgrade openai
 
 Chạy: python train_openai.py
 """
 
 import json
 import os
+import sys
 import time
 from pathlib import Path
-from openai import OpenAI
+
+# Check dependencies
+try:
+    from openai import OpenAI
+    import openai
+except ImportError:
+    print("❌ Chưa cài OpenAI library!")
+    print()
+    print("Chạy lệnh này:")
+    print("  pip install --upgrade openai")
+    sys.exit(1)
+
+# Check OpenAI version
+try:
+    version = openai.__version__
+    major_version = int(version.split('.')[0])
+    if major_version < 1:
+        print(f"⚠️  OpenAI version cũ: {version}")
+        print("   Cần upgrade:")
+        print("   pip install --upgrade openai")
+        sys.exit(1)
+except Exception:
+    pass
 
 print("=" * 60)
 print("🐧 GẤU KẸO - OPENAI FINE-TUNING")
@@ -37,8 +60,20 @@ if not api_key:
         print("   Lấy tại: https://platform.openai.com/api-keys")
         exit()
 
-client = OpenAI(api_key=api_key)
-print("✓ API key OK!")
+try:
+    client = OpenAI(api_key=api_key)
+    print("✓ API key OK!")
+except TypeError as e:
+    if 'proxies' in str(e):
+        print()
+        print("❌ Lỗi OpenAI library version conflict!")
+        print()
+        print("Chạy lệnh này để fix:")
+        print("  pip install --upgrade openai httpx")
+        print()
+        sys.exit(1)
+    else:
+        raise
 
 # ============================================
 # BƯỚC 2: Chuẩn bị training data
