@@ -1,420 +1,224 @@
-# 🤖 AI Training Data Generator
+# 🐧 Gấu Kẹo AI - Training Your Own Personality
 
-Công cụ sinh dữ liệu training chất lượng cao cho AI Chatbot sử dụng OpenAI GPT hoặc Anthropic Claude.
+Train AI model với personality Gấu Kẹo sử dụng dữ liệu training có sẵn.
 
-## ✨ Tính năng
+## 🎯 Mục đích
 
-- 🎯 **Tự động sinh dữ liệu**: Tạo hàng trăm cuộc hội thoại chất lượng cao tự động
-- 🌐 **Đa ngôn ngữ**: Hỗ trợ Tiếng Việt và nhiều ngôn ngữ khác
-- 🔌 **Nhiều API**: Hỗ trợ OpenAI, Anthropic Claude
-- 📊 **Nhiều format**: JSON, JSONL, CSV, OpenAI fine-tuning format
-- ⚡ **Xử lý song song**: Batch processing để tăng tốc độ
-- 🎨 **Tùy biến cao**: Dễ dàng thêm scenarios và cấu hình
-- 📈 **Quality control**: Lọc và kiểm tra chất lượng dữ liệu
-- 🐍 **Python & Node.js**: Cả hai phiên bản đều có sẵn
+Repository này giúp bạn:
+- ✅ Train AI model local với GPU (Unsloth + LoRA)
+- ✅ Train AI model trên cloud với OpenAI API
+- ✅ Test personality đã train xem có giống Gấu Kẹo không
 
 ## 🚀 Bắt đầu nhanh
 
-### Cài đặt Python Version
+### Tổng quan file structure
 
-```bash
-# Clone hoặc download repository này
-cd Botchatlocal
-
-# Cài đặt dependencies
-pip install -r requirements.txt
-
-# Set API key
-export OPENAI_API_KEY='your-openai-api-key-here'
-# hoặc
-export ANTHROPIC_API_KEY='your-anthropic-api-key-here'
-
-# Chạy generator cơ bản
-python training_data_generator.py
-
-# Hoặc chạy advanced version với nhiều tính năng
-python advanced_generator.py
+```
+Botchatlocal/
+├── train_local_gpu.py          # 🔥 Train với GPU local
+├── train_openai.py             # ☁️  Train với OpenAI API
+├── test_personality.py         # 🧪 Test model đã train
+├── training_data/
+│   └── gau_keo/
+│       ├── personality_profile.json    # Personality definition
+│       └── conversations.json          # Training conversations (22 examples)
+└── generators/                 # 📁 Helper scripts (optional)
 ```
 
-### Cài đặt Node.js Version
+### 3 cách để train AI:
+
+#### 1️⃣  Train Local với GPU (FREE, cần GPU)
 
 ```bash
 # Cài đặt dependencies
-npm install
+pip install unsloth transformers datasets bitsandbytes accelerate
 
-# Set API key
-export OPENAI_API_KEY='your-openai-api-key-here'
-# hoặc
-export ANTHROPIC_API_KEY='your-anthropic-api-key-here'
+# Train (mất ~30-60 phút với GPU)
+python train_local_gpu.py
 
-# Chạy generator
-npm start
-# hoặc
-node generator.js
+# Test personality
+python test_personality.py --local
 ```
 
-## 📖 Hướng dẫn chi tiết
+**Yêu cầu:**
+- GPU NVIDIA với ít nhất 8GB VRAM (RTX 3060/4060 trở lên)
+- Nếu không có GPU, dùng Google Colab với T4 GPU miễn phí
 
-### 1. Lấy API Key
+#### 2️⃣  Train với OpenAI API (Có phí, dễ nhất)
 
-#### OpenAI (Khuyến nghị cho người mới)
-1. Truy cập: https://platform.openai.com/api-keys
-2. Đăng ký/đăng nhập tài khoản
-3. Tạo API key mới
-4. Copy và lưu lại key (chỉ hiện 1 lần)
-5. Nạp tiền vào tài khoản (tối thiểu $5)
+```bash
+# Set API key
+export OPENAI_API_KEY='sk-...'
 
-**Chi phí**:
-- `gpt-4o-mini`: ~$0.15/1000 conversations (RẺ NHẤT)
-- `gpt-4o`: ~$2.50/1000 conversations
+# Hoặc tạo file .env
+echo "OPENAI_API_KEY=sk-..." > .env
 
-#### Anthropic Claude
-1. Truy cập: https://console.anthropic.com/
-2. Đăng ký tài khoản
-3. Lấy API key
-4. Nạp credits
+# Train (chờ OpenAI xử lý, ~10-30 phút)
+python train_openai.py
 
-**Chi phí**:
-- `claude-3-5-haiku`: ~$0.25/1000 conversations (RẺ)
-- `claude-3-5-sonnet`: ~$3.00/1000 conversations
+# Test personality
+python test_personality.py --openai
+```
 
-### 2. Cấu hình
+**Chi phí:** ~$3-5 cho 1 lần fine-tune GPT-4o-mini với 22 conversations
 
-Chỉnh sửa file `config.py` để tùy chỉnh:
+#### 3️⃣  Không train, chỉ test với personality prompts
+
+Nếu không muốn train model, có thể dùng prompt engineering:
+
+```bash
+python test_personality.py --openai --prompt-only
+```
+
+## 📊 Training Data
+
+### personality_profile.json
+Định nghĩa tính cách của Gấu Kẹo:
+- Vietnamese Gen Z tech enthusiast
+- Personality traits, speaking style, interests
+- Emotional patterns, values
+
+### conversations.json
+22 cuộc hội thoại mẫu showing Gấu Kẹo's personality:
+- Technical help (debugging, coding)
+- Emotional support (tâm sự, stress)
+- Casual chat (random topics)
+- Work/study discussions
+
+## 🧪 Testing
+
+### Test với scenarios có sẵn:
+
+```bash
+python test_personality.py --local
+# hoặc
+python test_personality.py --openai
+```
+
+### Interactive chat:
+
+```bash
+python test_personality.py --local --interactive
+```
+
+Chat với model để xem personality có giống Gấu Kẹo không.
+
+## ⚙️  Advanced: Customize Training
+
+### Train với model khác (Local GPU)
+
+Mở `train_local_gpu.py`, sửa dòng:
 
 ```python
-# Chọn API
-API_TYPE = "openai"  # hoặc "anthropic"
-
-# Chọn model
-MODEL_NAME = "gpt-4o-mini"  # Rẻ nhất, chất lượng tốt
-
-# Số conversations muốn sinh
-NUM_CONVERSATIONS = 50
-
-# Batch size (số requests đồng thời)
-BATCH_SIZE = 5
-
-# Temperature (0-1, cao hơn = sáng tạo hơn)
-TEMPERATURE = 0.8
+model_name = "unsloth/Qwen2.5-1.5B-bnb-4bit"  # Model nhẹ
+# Đổi thành:
+model_name = "unsloth/Qwen2.5-7B-bnb-4bit"    # Model mạnh hơn
 ```
 
-### 3. Chạy Generator
+### Train với model khác (OpenAI)
 
-#### Python - Basic Version
+Mở `train_openai.py`, sửa:
 
-```bash
-python training_data_generator.py
+```python
+model = "gpt-4o-mini-2024-07-18"  # Rẻ nhất
+# Đổi thành:
+model = "gpt-4o-2024-08-06"       # Chất lượng cao hơn
 ```
 
-Tính năng:
-- Sinh 30 conversations mặc định
-- Xuất ra JSON, JSONL, CSV, OpenAI format
-- Hiển thị thống kê cơ bản
+### Thêm training data
 
-#### Python - Advanced Version (KHUYẾN NGHỊ)
-
-```bash
-python advanced_generator.py
-```
-
-Tính năng:
-- Quality filtering
-- Progress bar
-- Retry logic khi gặp lỗi
-- Detailed statistics
-- Logging
-- Tuỳ biến cao qua config.py
-
-#### Node.js Version
-
-```bash
-node generator.js
-```
-
-### 4. Kết quả
-
-Sau khi chạy, dữ liệu được lưu trong thư mục `training_data/`:
-
-```
-training_data/
-├── conversations_20241117.json       # JSON format
-├── conversations_20241117.jsonl      # JSONL format (mỗi dòng 1 object)
-├── conversations_20241117.csv        # CSV format
-└── openai_format_20241117.jsonl      # OpenAI fine-tuning format
-```
-
-## 📊 Định dạng dữ liệu
-
-### JSON Format
+Chỉnh `training_data/gau_keo/conversations.json`, thêm conversations mới:
 
 ```json
-[
-  {
-    "id": "conv_20241117_120530_1234",
-    "timestamp": "2024-11-17T12:05:30.123Z",
-    "scenario": {
-      "topic": "Lập trình Python cơ bản",
-      "context": "Người dùng muốn học Python",
-      "goal": "Giải thích cách bắt đầu học Python",
-      "turns": 6
-    },
-    "conversation": [
-      {
-        "role": "user",
-        "content": "Tôi muốn học lập trình Python nhưng chưa biết bắt đầu từ đâu. Bạn có thể hướng dẫn được không?"
-      },
-      {
-        "role": "assistant",
-        "content": "Chào bạn! Tuyệt vời khi bạn muốn học Python. Đây là ngôn ngữ rất phù hợp cho người mới bắt đầu. Để bắt đầu, bạn cần..."
-      }
-    ],
-    "metadata": {
-      "topic": "Lập trình Python cơ bản",
-      "difficulty": "easy",
-      "language": "vi"
-    },
-    "source": "openai_gpt-4o-mini"
-  }
-]
-```
-
-### OpenAI Fine-tuning Format
-
-```jsonl
-{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
-{"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
-```
-
-Dùng format này để fine-tune model OpenAI: https://platform.openai.com/docs/guides/fine-tuning
-
-## 🎨 Tùy chỉnh Scenarios
-
-### Thêm scenarios của riêng bạn
-
-Chỉnh sửa `config.py`:
-
-```python
-CUSTOM_SCENARIOS = [
-    {
-        "topic": "Chủ đề của bạn",
-        "context": "Ngữ cảnh cuộc hội thoại",
-        "goal": "Mục tiêu của conversation",
-        "turns": 6  # Số lượt hội thoại
-    },
-    {
-        "topic": "Tư vấn mua laptop",
-        "context": "Sinh viên cần mua laptop học tập",
-        "goal": "Tư vấn laptop phù hợp với budget và nhu cầu",
-        "turns": 8
-    },
-    # Thêm nhiều scenarios khác...
-]
-```
-
-### Chọn categories
-
-```python
-ENABLED_CATEGORIES = {
-    "technology": True,      # Công nghệ
-    "lifestyle": True,       # Đời sống
-    "education": True,       # Giáo dục
-    "business": False,       # Tắt category này
-    "entertainment": True,   # Giải trí
+{
+  "id": "gaukeo_023",
+  "scenario": {
+    "topic": "Topic của bạn",
+    "category": "technical|emotional|casual",
+    "mood": "focused|vulnerable|excited"
+  },
+  "conversation": [
+    {"role": "user", "content": "User message"},
+    {"role": "assistant", "content": "Gấu Kẹo response"}
+  ]
 }
 ```
 
-## 🛠️ Sử dụng nâng cao
+## 📁 Folder `generators/` - Optional
 
-### 1. Tạo dữ liệu lớn
+Folder này chứa các scripts để **tạo thêm** training data. Không cần thiết để train AI.
+
+- Nếu chỉ muốn train với data có sẵn → bỏ qua folder này
+- Nếu muốn generate thêm conversations → xem `generators/README.md`
+
+**Có thể xoá folder này** nếu không cần.
+
+## 💰 Chi phí
+
+### Local GPU Training
+- **FREE** nếu có GPU
+- Google Colab T4 GPU: FREE (giới hạn giờ sử dụng)
+- Google Colab A100: ~$10/tháng
+
+### OpenAI API Training
+- Fine-tune GPT-4o-mini: ~$3-5 cho 22 conversations
+- Sử dụng model: ~$0.30-$0.60/1M tokens input + ~$1.20-$2.40/1M tokens output
+- Test conversations: vài cent
+
+## 🛠️  Troubleshooting
+
+### Lỗi: GPU out of memory
+
+```python
+# Trong train_local_gpu.py, giảm batch size:
+per_device_train_batch_size=1  # giảm từ 2 xuống 1
+```
+
+### Lỗi: OpenAI API key không hợp lệ
 
 ```bash
-# Sinh 500 conversations
-python advanced_generator.py
-```
+# Check API key
+echo $OPENAI_API_KEY
 
-Chỉnh trong `config.py`:
-```python
-NUM_CONVERSATIONS = 500
-BATCH_SIZE = 10  # Tăng nếu API cho phép
-```
-
-### 2. Tạo dữ liệu chất lượng cao
-
-```python
-# Trong config.py
-TEMPERATURE = 0.7  # Giảm để output ổn định hơn
-ENABLE_QUALITY_FILTER = True
-MIN_RESPONSE_LENGTH = 50  # Tăng độ dài tối thiểu
-```
-
-### 3. Dùng model tốt hơn
-
-```python
-# OpenAI
-MODEL_NAME = "gpt-4o"  # Chất lượng cao hơn nhưng đắt hơn
-
-# Anthropic
-MODEL_NAME = "claude-3-5-sonnet-20241022"  # Chất lượng cao nhất
-```
-
-### 4. Xử lý lỗi và retry
-
-Generator tự động retry khi gặp lỗi:
-- Rate limit errors
-- Timeout errors
-- API errors
-
-Logs được lưu trong `training_generation.log`
-
-## 💡 Use Cases
-
-### 1. Fine-tune OpenAI model
-
-```bash
-# Sinh dữ liệu
-python advanced_generator.py
-
-# Upload và fine-tune
-openai api fine_tunes.create \
-  -t "training_data/openai_format_20241117.jsonl" \
-  -m gpt-3.5-turbo
-```
-
-### 2. Train custom chatbot
-
-```python
-import json
-
-# Đọc dữ liệu
-with open('training_data/conversations.json', 'r', encoding='utf-8') as f:
-    data = json.load(f)
-
-# Dùng cho training model của bạn
-for conv in data:
-    messages = conv['conversation']
-    # Train your model...
-```
-
-### 3. Tạo dataset cho RAG
-
-```python
-# Dùng conversations làm knowledge base cho RAG system
-# Vector embedding + similarity search
-```
-
-### 4. Testing chatbot
-
-```python
-# Dùng conversations để test chatbot của bạn
-# So sánh output với expected responses
-```
-
-## 📈 Tips để có dữ liệu tốt
-
-1. **Đa dạng scenarios**: Càng nhiều scenarios khác nhau càng tốt
-2. **Tăng turns**: Conversations dài hơn = ngữ cảnh phong phú hơn
-3. **Quality over quantity**: 100 conversations chất lượng > 1000 conversations kém
-4. **Review manually**: Xem qua 1 số conversations để đảm bảo chất lượng
-5. **Iterative approach**: Sinh ít trước, xem kết quả, điều chỉnh, sinh nhiều hơn
-6. **Mix topics**: Đừng tập trung 1 chủ đề duy nhất
-7. **Realistic scenarios**: Scenarios càng gần với use case thực tế càng tốt
-
-## 🐛 Troubleshooting
-
-### Lỗi: "No API key found"
-
-```bash
-# Đảm bảo đã set environment variable
+# Set lại
 export OPENAI_API_KEY='sk-...'
-
-# Hoặc sửa trực tiếp trong config.py
-OPENAI_API_KEY = 'sk-...'
 ```
 
-### Lỗi: Rate limit exceeded
+### Fine-tuning job failed
 
-```python
-# Trong config.py
-BATCH_SIZE = 3  # Giảm batch size
-BATCH_DELAY = 2  # Tăng delay giữa batches
+```bash
+# Check job status
+python train_openai.py --check-status
 ```
 
-### Lỗi: Timeout
+### Model không giống personality
 
-```python
-# Trong config.py
-REQUEST_TIMEOUT = 120  # Tăng timeout lên 120s
-```
+1. **Thêm training data:** Cần ít nhất 50-100 conversations để model học tốt
+2. **Tăng epochs:** Sửa trong script từ 3 lên 5-10 epochs
+3. **Dùng model lớn hơn:** GPT-4o thay vì 4o-mini
 
-### Chất lượng kém
+## 📚 Tài liệu thêm
 
-```python
-# Tăng temperature
-TEMPERATURE = 0.9
+- [HOW_TO_USE.md](HOW_TO_USE.md) - Hướng dẫn đơn giản
+- [PERSONALITY_GUIDE.md](PERSONALITY_GUIDE.md) - Chi tiết về Gấu Kẹo personality
+- [OpenAI Fine-tuning Docs](https://platform.openai.com/docs/guides/fine-tuning)
+- [Unsloth Documentation](https://github.com/unslothai/unsloth)
 
-# Sử dụng model tốt hơn
-MODEL_NAME = "gpt-4o"
+## ⚠️  Lưu ý
 
-# Tăng số turns
-DEFAULT_TURNS = 8
-```
+- **Chi phí:** OpenAI API có phí. Set budget limits trên platform.
+- **API Keys:** Đừng commit API keys vào git. Dùng `.env` file (đã có trong `.gitignore`)
+- **Privacy:** Training data không chứa thông tin nhạy cảm
+- **GPU:** Local training cần GPU NVIDIA. Không chạy được trên CPU/Mac M-series.
 
-### Conversations bị lọc nhiều
+## 🎯 Quick Start Summary
 
-```python
-# Nới lỏng quality filter
-MIN_RESPONSE_LENGTH = 20
-ENABLE_QUALITY_FILTER = False  # Hoặc tắt hẳn
-```
-
-## 📚 Tài nguyên tham khảo
-
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Anthropic API Documentation](https://docs.anthropic.com)
-- [OpenAI Fine-tuning Guide](https://platform.openai.com/docs/guides/fine-tuning)
-- [Best practices for training data](https://platform.openai.com/docs/guides/fine-tuning/preparing-your-dataset)
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-- Thêm scenarios mới
-- Cải thiện prompt templates
-- Thêm API providers khác
-- Fix bugs
-- Improve documentation
-
-## 📝 License
-
-MIT License - Tự do sử dụng cho mục đích cá nhân và thương mại.
-
-## ⚠️ Lưu ý
-
-- **Chi phí**: Sử dụng API có tính phí. Hãy theo dõi usage và set budget limits.
-- **API Keys**: Giữ API keys bí mật, không commit vào git
-- **Rate Limits**: Mỗi API có rate limits khác nhau
-- **Quality**: AI-generated data cần được review trước khi dùng production
-- **Privacy**: Không dùng dữ liệu nhạy cảm trong scenarios
-
-## 🎯 Roadmap
-
-- [ ] Thêm support cho Gemini API
-- [ ] Web UI để quản lý scenarios
-- [ ] Auto-evaluation của conversations
-- [ ] Multi-language support nâng cao
-- [ ] Integration với vector databases
-- [ ] Docker container
-- [ ] CLI tool với arguments
-
-## 💬 Hỗ trợ
-
-Nếu có vấn đề hoặc câu hỏi:
-1. Đọc phần Troubleshooting
-2. Check logs trong `training_generation.log`
-3. Tạo issue trên GitHub
+**Không có GPU?** → Dùng `train_openai.py` (có phí ~$5)
+**Có GPU?** → Dùng `train_local_gpu.py` (miễn phí)
+**Không muốn train?** → Dùng prompt engineering với `test_personality.py --prompt-only`
 
 ---
 
-**Happy training! 🚀**
+**Happy training! 🐧**
 
-Tạo bởi AI Training Data Generator - Powered by OpenAI & Anthropic
+Train bởi dữ liệu từ Gấu Kẹo personality - Vietnamese Gen Z tech enthusiast
