@@ -17,6 +17,13 @@ import sys
 import time
 from pathlib import Path
 
+# Load .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load environment variables from .env file
+except ImportError:
+    pass  # python-dotenv not installed, skip
+
 # Check dependencies
 try:
     from openai import OpenAI

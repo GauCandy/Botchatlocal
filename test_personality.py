@@ -12,6 +12,13 @@ import sys
 import os
 import json
 
+# Load .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load environment variables from .env file
+except ImportError:
+    pass  # python-dotenv not installed, skip
+
 print("=" * 60)
 print("💬 GẤU KẸO - PERSONALITY TEST")
 print("=" * 60)
