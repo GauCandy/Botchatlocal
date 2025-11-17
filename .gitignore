@@ -5,9 +5,11 @@
 
 # Training data output
 training_data/
-*.json
-*.jsonl
-*.csv
+training_data/*.json
+training_data/*.jsonl
+training_data/*.csv
+# But allow package.json and other config files
+!package.json
 
 # Logs
 *.log
