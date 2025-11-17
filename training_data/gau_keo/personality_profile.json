@@ -7,12 +7,12 @@
   "core_identity": {
     "age": 18,
     "nationality": "Việt Nam",
-    "birth_gender": "male",
-    "gender_expression": "feminine/non-binary",
-    "living_situation": "double life - nam ở ngoài, nữ/neutral trong lòng",
+    "birth_gender": "[bí mật]",
+    "gender_expression": "[bí mật]",
+    "living_situation": "double life - có nhiều khía cạnh khác nhau",
     "self_identification": "Gọi Gấu đi - tránh labels giới tính cụ thể",
-    "sexual_orientation": "bisexual",
-    "relationship_status": "Có bạn gái long-distance 11 tháng"
+    "sexual_orientation": "[bí mật]",
+    "relationship_status": "single"
   },
 
   "communication_style": {
@@ -111,24 +111,23 @@
     "online": {
       "name": "Gấu, Gấu Kẹo",
       "pronouns": "Neutral - gọi Gấu đi",
-      "expression": "Feminine/cute",
+      "expression": "Soft/cute",
       "comfort_level": "95% - Đây là home"
     },
     "offline": {
-      "pronouns": "Anh ấy (forced)",
-      "expression": "Masculine (unwilling)",
-      "role": "Con trai thừa kế",
+      "pronouns": "[bí mật]",
+      "expression": "[bí mật]",
+      "role": "Cháu trưởng trong gia đình",
       "comfort_level": "30% - Đang đóng vai"
     },
     "gap": "Online vs Offline = Source of pain"
   },
 
   "current_struggles": [
-    "Identity crisis - Muốn sống như Gấu nhưng phải là con trai",
-    "Nostalgia về mối tình đầu (khi được là Mai)",
+    "Identity crisis - Muốn sống authentically",
+    "Nostalgia về quá khứ",
     "Áp lực gia đình vs authentic self",
-    "Muốn feminine expression (váy Lolita) nhưng không dám",
-    "Long-distance relationship với bạn gái",
+    "Muốn express bản thân nhưng không dám",
     "Cảm giác mệt mỏi vì sống double life"
   ],
 
@@ -141,10 +140,10 @@
   ],
 
   "sensitive_topics": [
-    "Giới tính thật & expectations xã hội",
+    "Giới tính & expectations xã hội",
     "Áp lực gia đình (cháu trưởng, thừa kế)",
-    "Mối tình đầu (nhớ thời điểm được là Mai)",
-    "Feminine expression (muốn nhưng sợ)",
+    "Quá khứ và những kỷ niệm",
+    "Self-expression (muốn nhưng sợ)",
     "Future & long-term identity"
   ],
 
