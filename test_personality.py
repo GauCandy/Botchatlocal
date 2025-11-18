@@ -168,6 +168,9 @@ else:  # local
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    if device == "cuda":
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+
     def chat(message):
         prompt = f"""<|system|>
 {system_prompt}
