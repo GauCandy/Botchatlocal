@@ -234,12 +234,18 @@ def run_discord():
     import asyncio
 
     # Memory system
-    conversations = {}
+    channel_history = {}  # Short-term: 30 cuộc trò chuyện gần nhất
     user_memories = {}
     pending_task = None  # Single pending task for channel
     pending_messages = []  # Buffered messages (user, content) for channel
 
     MEMORIES_FILE = "user_memories.json"
+    CONVERSATION_LOGS_DIR = "conversation_logs"
+
+    # Tạo folder lưu log nếu chưa có
+    if not os.path.exists(CONVERSATION_LOGS_DIR):
+        os.makedirs(CONVERSATION_LOGS_DIR)
+
     if os.path.exists(MEMORIES_FILE):
         try:
             with open(MEMORIES_FILE, 'r', encoding='utf-8') as f:
@@ -250,6 +256,22 @@ def run_discord():
     def save_memories():
         with open(MEMORIES_FILE, 'w', encoding='utf-8') as f:
             json.dump(user_memories, f, ensure_ascii=False, indent=2)
+
+    def archive_old_messages(channel_id, old_messages):
+        """Lưu tin nhắn cũ vào file log để sau này xử lý"""
+        import datetime
+        log_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}.jsonl")
+
+        timestamp = datetime.datetime.now().isoformat()
+        log_entry = {
+            "timestamp": timestamp,
+            "messages": old_messages,
+            "processed": False  # Đánh dấu chưa nén/xử lý
+        }
+
+        # Append vào file (JSONL format - mỗi dòng là 1 JSON)
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
 
     async def process_channel_messages(channel):
         """Process buffered messages after 3 second timeout"""
@@ -263,11 +285,16 @@ def run_discord():
         messages_buffer = pending_messages.copy()
         pending_messages = []
 
+        # Get channel history
+        channel_id = str(channel.id)
+        if channel_id not in channel_history:
+            channel_history[channel_id] = []
+
         # Build multi-user context
         context_lines = []
         all_users = {}
         for username, content in messages_buffer:
-            context_lines.append(f"[{username}]: {content}")
+            context_lines.append(f"{username}: {content}")
             if username not in all_users:
                 all_users[username] = []
             all_users[username].append(content)
@@ -288,6 +315,15 @@ RESPONSE RULES:
 - Neu nhieu chu de khac nhau -> address tung cai rieng
 - Neu khong lien quan -> bo qua"""
 
+        # Load long-term memories if exists
+        summary_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}_memories.txt")
+        if os.path.exists(summary_file):
+            with open(summary_file, 'r', encoding='utf-8') as f:
+                long_term_memories = f.read()
+                if long_term_memories.strip():
+                    # Chỉ lấy 1000 ký tự cuối để tiết kiệm tokens
+                    system += f"\n\nLONG-TERM MEMORIES (ky uc lau dai):\n{long_term_memories[-1000:]}"
+
         for username in all_users:
             user_id = str(username)  # Simplified
             if user_id in user_memories and user_memories[user_id]:
@@ -302,6 +338,11 @@ RESPONSE RULES:
                 start_time = time.time()
 
                 messages = [{"role": "system", "content": system}]
+
+                # Add conversation history (last 60 messages = 30 exchanges)
+                messages.extend(channel_history[channel_id][-60:])
+
+                # Add current context
                 messages.append({"role": "user", "content": combined_context})
 
                 response = client.chat.completions.create(
@@ -335,6 +376,21 @@ RESPONSE RULES:
                 if len(reply.strip()) < 3:
                     print("Bot quyet dinh khong tra loi")
                     return
+
+                # Save to channel history
+                channel_history[channel_id].append({"role": "user", "content": combined_context})
+                channel_history[channel_id].append({"role": "assistant", "content": reply})
+
+                # Limit history to last 60 messages (30 exchanges)
+                # Archive old messages when exceeding 120 messages
+                if len(channel_history[channel_id]) > 120:
+                    # Lấy 60 messages cũ nhất để archive
+                    old_messages = channel_history[channel_id][:-60]
+                    archive_old_messages(channel_id, old_messages)
+                    print(f"Archived {len(old_messages)} old messages to conversation_logs/")
+
+                    # Giữ lại 60 messages mới nhất
+                    channel_history[channel_id] = channel_history[channel_id][-60:]
 
             except Exception as e:
                 print(f"Error: {e}")
@@ -391,9 +447,9 @@ RESPONSE RULES:
 
     @bot.command(name='clear')
     async def clear_cmd(ctx):
-        user_id = str(ctx.author.id)
-        conversations[user_id] = []
-        await ctx.reply("Da clear history")
+        channel_id = str(ctx.channel.id)
+        channel_history[channel_id] = []
+        await ctx.reply("Da clear history channel nay")
 
     @bot.command(name='info')
     async def info_cmd(ctx):
@@ -416,11 +472,111 @@ RESPONSE RULES:
     @bot.command(name='forget')
     async def forget_cmd(ctx):
         user_id = str(ctx.author.id)
+        channel_id = str(ctx.channel.id)
         if user_id in user_memories:
             del user_memories[user_id]
             save_memories()
-        conversations[user_id] = []
+        channel_history[channel_id] = []
         await ctx.reply("Da quen het")
+
+    @bot.command(name='review_memories')
+    async def review_memories_cmd(ctx):
+        """Review và nén các log cũ thành long-term memories"""
+        channel_id = str(ctx.channel.id)
+        log_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}.jsonl")
+
+        if not os.path.exists(log_file):
+            await ctx.reply("Khong co log nao de review")
+            return
+
+        await ctx.reply("Dang review memories...")
+
+        # Đọc tất cả unprocessed logs
+        unprocessed_logs = []
+        all_lines = []
+
+        with open(log_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                entry = json.loads(line)
+                all_lines.append(entry)
+                if not entry.get('processed', False):
+                    unprocessed_logs.append(entry)
+
+        if not unprocessed_logs:
+            await ctx.reply("Tat ca logs da duoc xu ly roi")
+            return
+
+        # Gộp tất cả messages từ unprocessed logs
+        all_messages = []
+        for log in unprocessed_logs:
+            all_messages.extend(log['messages'])
+
+        # Dùng GPT-5 để extract important memories
+        async with ctx.typing():
+            try:
+                review_prompt = f"""Hay phan tich cac doan hoi thoai duoi day va extract ra nhung thong tin QUAN TRONG dang nho lau dai:
+
+- Su kien dac biet (sinh nhat, ky niem, thanh tuu...)
+- Thong tin ca nhan quan trong (so thich, muc tieu, van de...)
+- Cam xuc manh me hoac turning points
+- Nhung gi nguoi dung muon bot nho ve ho
+
+Neu khong co gi quan trong, chi tra loi "Khong co gi dang luu".
+
+Messages:
+{json.dumps(all_messages[:50], ensure_ascii=False)}"""  # Giới hạn 50 messages để tránh quá dài
+
+                response = client.chat.completions.create(
+                    model=MODEL_ID,
+                    messages=[
+                        {"role": "system", "content": "Ban la memory curator, chi extract nhung thong tin thuc su quan trong."},
+                        {"role": "user", "content": review_prompt}
+                    ],
+                    max_completion_tokens=500
+                )
+
+                summary = response.choices[0].message.content
+
+                # Lưu vào file summary riêng
+                summary_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}_memories.txt")
+                import datetime
+                with open(summary_file, 'a', encoding='utf-8') as f:
+                    f.write(f"\n\n=== Review luc {datetime.datetime.now().isoformat()} ===\n")
+                    f.write(summary)
+
+                # Đánh dấu processed
+                for log in all_lines:
+                    if not log.get('processed', False):
+                        log['processed'] = True
+
+                # Ghi lại file
+                with open(log_file, 'w', encoding='utf-8') as f:
+                    for entry in all_lines:
+                        f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+
+                await ctx.reply(f"Da review xong!\n\nKet qua:\n{summary[:500]}...")
+
+            except Exception as e:
+                await ctx.reply(f"Loi khi review: {e}")
+
+    @bot.command(name='show_memories')
+    async def show_memories_cmd(ctx):
+        """Xem long-term memories đã được lưu"""
+        channel_id = str(ctx.channel.id)
+        summary_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}_memories.txt")
+
+        if not os.path.exists(summary_file):
+            await ctx.reply("Chua co memories nao duoc luu")
+            return
+
+        with open(summary_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Gửi 2000 ký tự cuối (Discord limit)
+        if len(content) > 2000:
+            await ctx.reply(f"...{content[-2000:]}")
+        else:
+            await ctx.reply(content if content else "File trong")
 
     print("Starting Discord bot...")
     bot.run(DISCORD_TOKEN)
