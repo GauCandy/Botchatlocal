@@ -65,3 +65,5 @@ yarn.lock
 tmp/
 temp/
 *.tmp
+
+backup/
