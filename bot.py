@@ -302,11 +302,24 @@ Nếu không có gì quan trọng:
             )
 
             result_text = response.choices[0].message.content.strip()
+
+            # Skip nếu response rỗng
+            if not result_text:
+                return False
+
             # Parse JSON từ response
             if result_text.startswith("```"):
                 result_text = result_text.split("```")[1]
                 if result_text.startswith("json"):
                     result_text = result_text[4:]
+                result_text = result_text.strip()
+
+            # Tìm JSON object trong response
+            start_idx = result_text.find("{")
+            end_idx = result_text.rfind("}") + 1
+            if start_idx == -1 or end_idx == 0:
+                return False
+            result_text = result_text[start_idx:end_idx]
 
             result = json.loads(result_text)
 
