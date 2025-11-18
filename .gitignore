@@ -20,6 +20,10 @@ training_data/*.csv
 !training_data/gau_keo/
 !training_data/gau_keo/**
 
+# EXCEPTION: Allow WhiteCat dataset for training
+!training_data/whitecat/
+!training_data/whitecat/**
+
 # Logs
 *.log
 training_generation.log
