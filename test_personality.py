@@ -165,8 +165,11 @@ else:  # local
     model.eval()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Model loaded!")
+    print("Model loaded!")
     print(f"Device: {device.upper()}")
+
+    if device == "cuda":
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
 
     def chat(message):
         prompt = f"""<|system|>
