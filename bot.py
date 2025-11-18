@@ -315,7 +315,8 @@ Nếu không có gì quan trọng:
                     "id": str(uuid.uuid4()),
                     "timestamp": datetime.datetime.now().isoformat(),
                     "users": list(user_info.keys()),
-                    "user_names": user_info,
+                    "user_names": user_info.copy(),  # Tên hiện tại (sẽ được update)
+                    "original_names": user_info.copy(),  # Tên lúc tạo ký ức (không đổi)
                     "content": result["content"],
                     "importance": result.get("importance", "medium"),
                     "tags": result.get("tags", []),
@@ -535,11 +536,23 @@ LONG-TERM MEMORY SYSTEM:
         # Truyền current names để update tên mới nếu user đổi display name
         relevant_memories = get_relevant_memories(all_user_ids, current_names=all_users, limit=10)
         if relevant_memories:
-            memories_text = "\n".join([
-                f"- [{mem.get('importance', 'medium')}] {mem['content']}"
-                for mem in relevant_memories
-            ])
-            system += f"\n\nLONG-TERM MEMORIES:\n{memories_text}"
+            memories_lines = []
+            for mem in relevant_memories:
+                mem_text = f"- [{mem.get('importance', 'medium')}] {mem['content']}"
+                # Thêm info về tên cũ nếu đã đổi
+                original = mem.get('original_names', {})
+                current = mem.get('user_names', {})
+                name_changes = []
+                for uid in mem.get('users', []):
+                    old_name = original.get(uid)
+                    new_name = current.get(uid)
+                    if old_name and new_name and old_name != new_name:
+                        name_changes.append(f"{old_name} -> {new_name}")
+                if name_changes:
+                    mem_text += f" (ten cu: {', '.join(name_changes)})"
+                memories_lines.append(mem_text)
+
+            system += f"\n\nLONG-TERM MEMORIES:\n" + "\n".join(memories_lines)
             # Save updated names
             save_long_term_memory()
 
