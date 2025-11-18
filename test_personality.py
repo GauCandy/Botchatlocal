@@ -131,44 +131,72 @@ else:  # local
     print("🔥 Loading local model...")
 
     try:
-        from unsloth import FastLanguageModel
         import torch
-    except ImportError:
-        print("❌ Cần cài unsloth!")
-        print("   pip install unsloth")
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from peft import PeftModel
+    except ImportError as e:
+        print(f"❌ Thiếu dependencies: {e}")
+        print("   pip install transformers peft accelerate")
         exit()
 
     model_path = "models/gau_keo_local"
     if not os.path.exists(model_path):
         print(f"❌ Không tìm thấy model tại {model_path}")
-        print("   Bạn đã train model chưa? Chạy: python train_local_gpu.py")
+        print("   Bạn đã train model chưa? Chạy: python train_local_simple.py")
         exit()
 
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_path,
-        max_seq_length=2048,
-        dtype=None,
-        load_in_4bit=True,
-    )
+    # Load base model and LoRA adapter
+    base_model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
-    FastLanguageModel.for_inference(model)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model_name,
+        torch_dtype=torch.float16,
+        device_map="auto"
+    )
+    model = PeftModel.from_pretrained(model, model_path)
+    model.eval()
+
     print("✓ Model loaded!")
 
+    # Load personality for system prompt
+    personality_path = "training_data/gau_keo/personality_profile.json"
+    if os.path.exists(personality_path):
+        with open(personality_path, 'r', encoding='utf-8') as f:
+            personality = json.load(f)
+        system_prompt = f"""Bạn là {personality['character_name']}.
+Tính cách: {personality['communication_style']['tone']}
+Từ hay dùng: {', '.join(personality['communication_style']['common_words'][:10])}
+Emoji: {', '.join(personality['communication_style']['signature_emojis'])}
+
+Trả lời như Gấu Kẹo - mềm mại, casual, Gen Z Việt. Dùng emoji 🐧."""
+    else:
+        system_prompt = "Bạn là Gấu Kẹo 🐧. Trả lời mềm mại, casual, Gen Z Việt."
+
     def chat(message):
-        prompt = f"""<|user|>
+        prompt = f"""<|system|>
+{system_prompt}
+<|user|>
 {message}
 <|assistant|>
 """
-        inputs = tokenizer(prompt, return_tensors="pt").to("cuda" if torch.cuda.is_available() else "cpu")
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=256,
-            temperature=0.8,
-            top_p=0.9,
-        )
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=256,
+                temperature=0.8,
+                top_p=0.9,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id
+            )
+
         response = tokenizer.decode(outputs[0], skip_special_tokens=True)
         # Extract only assistant response
-        return response.split("<|assistant|>")[-1].strip()
+        if "<|assistant|>" in response:
+            return response.split("<|assistant|>")[-1].strip()
+        return response.strip()
 
 # ============================================
 # Test scenarios
