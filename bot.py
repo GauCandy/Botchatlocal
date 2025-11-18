@@ -394,11 +394,22 @@ Trả về dạng JSON:
                 except Exception as e:
                     print(f"[Compress] Error: {e}")
 
-    def get_relevant_memories(user_ids, limit=10):
-        """Lấy ký ức liên quan đến users"""
+    def get_relevant_memories(user_ids, current_names=None, limit=10):
+        """Lấy ký ức liên quan đến users
+
+        Args:
+            user_ids: list of Discord user IDs
+            current_names: dict {user_id: current_display_name} để update tên mới
+            limit: số lượng memories tối đa
+        """
         relevant = []
         for mem in long_term_memory["memories"]:
             if any(uid in mem.get("users", []) for uid in user_ids):
+                # Update display names nếu có tên mới
+                if current_names:
+                    for uid in mem.get("users", []):
+                        if uid in current_names:
+                            mem["user_names"][uid] = current_names[uid]
                 relevant.append(mem)
             elif not mem.get("users"):  # General memories
                 relevant.append(mem)
@@ -521,13 +532,16 @@ LONG-TERM MEMORY SYSTEM:
 - Ban la nhan cach doc lap, khong phai sinh ra de phuc tung"""
 
         # Load long-term memories (new system)
-        relevant_memories = get_relevant_memories(all_user_ids, limit=10)
+        # Truyền current names để update tên mới nếu user đổi display name
+        relevant_memories = get_relevant_memories(all_user_ids, current_names=all_users, limit=10)
         if relevant_memories:
             memories_text = "\n".join([
                 f"- [{mem.get('importance', 'medium')}] {mem['content']}"
                 for mem in relevant_memories
             ])
             system += f"\n\nLONG-TERM MEMORIES:\n{memories_text}"
+            # Save updated names
+            save_long_term_memory()
 
         # Load old summary file if exists (backward compatibility)
         summary_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}_memories.txt")
