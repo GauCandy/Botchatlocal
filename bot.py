@@ -230,8 +230,10 @@ Cau hoi: Tin nhan moi nay co nen gop voi tin nhan truoc de tra loi 1 lan khong?
 Chi tra loi 1 tu: GOP hoac TACH"""
 
         try:
+            # Use base model for decision (cheaper, better for logic)
+            decision_model = os.getenv("DECISION_MODEL", "gpt-4o-mini")
             response = client.chat.completions.create(
-                model=MODEL_ID,
+                model=decision_model,
                 messages=[{"role": "user", "content": decision_prompt}],
                 temperature=0.3,
                 max_tokens=10
