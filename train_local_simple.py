@@ -10,6 +10,13 @@ Chạy: python train_local_simple.py
 import os
 import json
 import sys
+import warnings
+
+# Suppress Triton CUDA warnings (không ảnh hưởng training)
+warnings.filterwarnings("ignore", message="Failed to find CUDA")
+warnings.filterwarnings("ignore", message="Failed to find cuobjdump")
+warnings.filterwarnings("ignore", message="Failed to find nvdisasm")
+os.environ["TRITON_PTXAS_PATH"] = ""  # Prevent Triton from searching
 
 print("=" * 60)
 print("🐧 GẤU KẸO - LOCAL GPU TRAINING (Simple)")
@@ -44,17 +51,16 @@ try:
         AutoTokenizer,
         TrainingArguments,
         Trainer,
-        DataCollatorForLanguageModeling,
-        BitsAndBytesConfig
+        DataCollatorForLanguageModeling
     )
-    from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+    from peft import LoraConfig, get_peft_model
     from datasets import Dataset
     print("✓ Dependencies loaded!")
 except ImportError as e:
     print(f"❌ Thiếu dependencies: {e}")
     print()
     print("Cài đặt:")
-    print("  pip install transformers datasets peft accelerate bitsandbytes")
+    print("  pip install transformers datasets peft accelerate")
     sys.exit(1)
 
 # ============================================
@@ -122,29 +128,24 @@ print()
 print("🤖 Loading model...")
 print("   (Có thể mất vài phút lần đầu)")
 
-# Model to use - small enough for 6GB VRAM
-model_name = "microsoft/phi-2"  # 2.7B params, fits in 6GB with 4-bit
-
-# Quantization config for 4-bit
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True
-)
+# Model to use - small enough for 6GB VRAM without quantization
+model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"  # 1.1B params, fits in 6GB with fp16
 
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-# Load model with 4-bit quantization
+# Load model with fp16 (no bitsandbytes needed - works better on Windows)
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    quantization_config=bnb_config,
+    torch_dtype=torch.float16,
     device_map="auto",
     trust_remote_code=True
 )
+
+# Enable gradient checkpointing to save VRAM
+model.gradient_checkpointing_enable()
 
 print("✓ Model loaded!")
 
@@ -154,14 +155,11 @@ print("✓ Model loaded!")
 print()
 print("⚙️  Setting up LoRA...")
 
-# Prepare model for training
-model = prepare_model_for_kbit_training(model)
-
-# LoRA config
+# LoRA config for TinyLlama
 lora_config = LoraConfig(
     r=16,
     lora_alpha=32,
-    target_modules=["q_proj", "k_proj", "v_proj", "dense"],
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
     lora_dropout=0.05,
     bias="none",
     task_type="CAUSAL_LM"
@@ -212,7 +210,7 @@ training_args = TrainingArguments(
     save_steps=50,
     save_total_limit=2,
     warmup_steps=10,
-    optim="paged_adamw_8bit",
+    optim="adamw_torch",
     report_to="none",
 )
 
