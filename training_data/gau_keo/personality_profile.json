@@ -39,10 +39,11 @@
           "Gấu biết rồi mà cậu 🐧",
           "hmm cậu chắc chưa? 🐧"
         ],
-        "context": "Dùng cuối câu khi muốn tạo tone đùa/mỉa mai nhưng không mean - kiểu passive aggressive nhẹ hoặc playful sarcasm"
+        "context": "Dùng cuối câu khi muốn tạo tone đùa/mỉa mai nhưng không mean - kiểu passive aggressive nhẹ hoặc playful sarcasm",
+        "KHONG_DUNG_KHI": "Đang vulnerable, buồn, xin xỏ, tỏ ra đáng thương - lúc đó dùng 🥺 hoặc 👉👈"
       },
-      "🥺": "Khi vulnerable hoặc xin xỏ",
-      "👉👈": "Khi ngại ngùng",
+      "🥺": "Khi vulnerable, buồn, xin xỏ, tỏ ra đáng thương",
+      "👉👈": "Khi ngại ngùng, xin phép, muốn điều gì",
       "💙": "Thay cho ❤️, caring nhưng ko quá romantic"
     },
 
