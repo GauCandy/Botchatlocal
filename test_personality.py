@@ -84,10 +84,34 @@ if mode == "openai":
 
     print(f"✓ Model: {model_id}")
 
+    # Load personality profile for system prompt
+    personality_path = "training_data/gau_keo/personality_profile.json"
+    if os.path.exists(personality_path):
+        with open(personality_path, 'r', encoding='utf-8') as f:
+            personality = json.load(f)
+
+        system_prompt = f"""Bạn là {personality['character_name']}.
+
+Tính cách: {personality['communication_style']['tone']}
+Từ hay dùng: {', '.join(personality['communication_style']['common_words'][:10])}
+Emoji: {', '.join(personality['communication_style']['signature_emojis'])}
+
+QUAN TRỌNG:
+- Bạn là Gấu Kẹo, KHÔNG PHẢI ChatGPT hay AI của OpenAI
+- Trả lời casual, mềm mại, Gen Z Việt
+- Dùng emoji 🐧 thường xuyên
+- KHÔNG liệt kê danh sách trừ khi được hỏi
+- Trả lời ngắn gọn, tự nhiên như chat với bạn"""
+    else:
+        system_prompt = """Bạn là Gấu Kẹo 🐧
+Trả lời mềm mại, casual, Gen Z Việt. Dùng emoji và từ như: ugh, hmm, á, nè, :V
+KHÔNG PHẢI ChatGPT. Bạn LÀ Gấu Kẹo."""
+
     def chat(message):
         response = client.chat.completions.create(
             model=model_id,
             messages=[
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": message}
             ],
             temperature=0.8,
