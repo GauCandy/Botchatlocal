@@ -10,6 +10,9 @@ Chay:
 import os
 import json
 import sys
+import datetime
+import uuid
+import asyncio
 from dotenv import load_dotenv
 
 # Load environment
@@ -236,15 +239,199 @@ def run_discord():
     # Memory system
     channel_history = {}  # Short-term: 30 cuộc trò chuyện gần nhất
     user_memories = {}
+    long_term_memory = {"memories": [], "last_optimized": None, "last_compressed": None}
     pending_task = None  # Single pending task for channel
-    pending_messages = []  # Buffered messages (user, content) for channel
+    pending_messages = []  # Buffered messages (user, content, message_obj) for channel
 
     MEMORIES_FILE = "user_memories.json"
     CONVERSATION_LOGS_DIR = "conversation_logs"
+    LONG_TERM_MEMORY_FILE = "long_term_memory.json"
 
     # Tạo folder lưu log nếu chưa có
     if not os.path.exists(CONVERSATION_LOGS_DIR):
         os.makedirs(CONVERSATION_LOGS_DIR)
+
+    # Load long-term memory
+    if os.path.exists(LONG_TERM_MEMORY_FILE):
+        try:
+            with open(LONG_TERM_MEMORY_FILE, 'r', encoding='utf-8') as f:
+                long_term_memory = json.load(f)
+        except:
+            pass
+
+    def save_long_term_memory():
+        with open(LONG_TERM_MEMORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(long_term_memory, f, ensure_ascii=False, indent=2)
+
+    async def extract_important_memory(messages_context, reply, channel_id, user_info):
+        """Dùng AI để extract ký ức quan trọng từ cuộc trò chuyện"""
+        try:
+            extract_prompt = f"""Phân tích cuộc trò chuyện và extract thông tin QUAN TRỌNG cần nhớ lâu dài.
+
+QUAN TRỌNG là:
+- Sự kiện đặc biệt (sinh nhật, kỷ niệm, thành tựu)
+- Thông tin cá nhân quan trọng (sở thích sâu, mục tiêu, vấn đề cần giúp)
+- Cảm xúc mạnh mẽ hoặc turning points
+- Những gì người dùng muốn bot nhớ về họ
+- Mối quan hệ và kết nối giữa các người dùng
+
+KHÔNG quan trọng:
+- Chat thông thường, chào hỏi
+- Technical questions một lần
+- Spam hoặc tin rác
+
+Cuộc trò chuyện:
+User: {messages_context}
+Bot reply: {reply}
+
+User info: {json.dumps(user_info, ensure_ascii=False)}
+
+Nếu có thông tin quan trọng, trả về JSON format:
+{{"important": true, "content": "mô tả ký ức ngắn gọn", "tags": ["emotion/event/personal_info/relationship"], "importance": "high/medium"}}
+
+Nếu không có gì quan trọng:
+{{"important": false}}"""
+
+            response = client.chat.completions.create(
+                model=MODEL_ID,
+                messages=[
+                    {"role": "system", "content": "Bạn là memory curator, chỉ extract thông tin thực sự quan trọng. Trả về JSON."},
+                    {"role": "user", "content": extract_prompt}
+                ],
+                max_completion_tokens=300
+            )
+
+            result_text = response.choices[0].message.content.strip()
+            # Parse JSON từ response
+            if result_text.startswith("```"):
+                result_text = result_text.split("```")[1]
+                if result_text.startswith("json"):
+                    result_text = result_text[4:]
+
+            result = json.loads(result_text)
+
+            if result.get("important", False):
+                memory_entry = {
+                    "id": str(uuid.uuid4()),
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "users": list(user_info.keys()),
+                    "user_names": user_info,
+                    "content": result["content"],
+                    "importance": result.get("importance", "medium"),
+                    "tags": result.get("tags", []),
+                    "channel_id": channel_id
+                }
+                long_term_memory["memories"].append(memory_entry)
+                save_long_term_memory()
+                print(f"[Long-term Memory] Saved: {result['content'][:50]}...")
+                return True
+        except Exception as e:
+            print(f"[Long-term Memory] Extract error: {e}")
+        return False
+
+    async def compress_old_conversations():
+        """Nén các cuộc trò chuyện cũ (>30) thành highlights"""
+        for channel_id, history in channel_history.items():
+            if len(history) > 60:  # 30 exchanges = 60 messages
+                old_messages = history[:-60]
+
+                # Extract highlights từ old messages
+                try:
+                    compress_prompt = f"""Nén các tin nhắn cũ này thành highlights quan trọng.
+Giữ lại:
+- Thông tin cá nhân quan trọng
+- Sự kiện đặc biệt
+- Cảm xúc mạnh
+- Context quan trọng cho cuộc trò chuyện sau
+
+Messages to compress:
+{json.dumps(old_messages[:30], ensure_ascii=False)}
+
+Trả về dạng JSON:
+{{"highlights": ["highlight 1", "highlight 2", ...], "summary": "tóm tắt ngắn"}}"""
+
+                    response = client.chat.completions.create(
+                        model=MODEL_ID,
+                        messages=[
+                            {"role": "system", "content": "Compress conversations into important highlights."},
+                            {"role": "user", "content": compress_prompt}
+                        ],
+                        max_completion_tokens=500
+                    )
+
+                    result_text = response.choices[0].message.content.strip()
+                    if result_text.startswith("```"):
+                        result_text = result_text.split("```")[1]
+                        if result_text.startswith("json"):
+                            result_text = result_text[4:]
+
+                    result = json.loads(result_text)
+
+                    # Lưu compressed memory
+                    if result.get("highlights"):
+                        for highlight in result["highlights"]:
+                            memory_entry = {
+                                "id": str(uuid.uuid4()),
+                                "timestamp": datetime.datetime.now().isoformat(),
+                                "users": [],
+                                "user_names": {},
+                                "content": highlight,
+                                "importance": "medium",
+                                "tags": ["compressed", "conversation_highlight"],
+                                "channel_id": channel_id
+                            }
+                            long_term_memory["memories"].append(memory_entry)
+
+                    long_term_memory["last_compressed"] = datetime.datetime.now().isoformat()
+                    save_long_term_memory()
+
+                    # Archive và clear old messages
+                    archive_old_messages(channel_id, old_messages)
+                    channel_history[channel_id] = history[-60:]
+
+                    print(f"[Compress] Channel {channel_id}: Compressed {len(old_messages)} messages")
+
+                except Exception as e:
+                    print(f"[Compress] Error: {e}")
+
+    def get_relevant_memories(user_ids, limit=10):
+        """Lấy ký ức liên quan đến users"""
+        relevant = []
+        for mem in long_term_memory["memories"]:
+            if any(uid in mem.get("users", []) for uid in user_ids):
+                relevant.append(mem)
+            elif not mem.get("users"):  # General memories
+                relevant.append(mem)
+
+        # Sort by importance và timestamp
+        relevant.sort(key=lambda x: (
+            0 if x.get("importance") == "high" else 1,
+            x.get("timestamp", "")
+        ), reverse=True)
+
+        return relevant[:limit]
+
+    async def delete_user_memories(user_id, user_name, description=None):
+        """Xóa ký ức liên quan đến user"""
+        deleted = []
+        remaining = []
+
+        for mem in long_term_memory["memories"]:
+            should_delete = user_id in mem.get("users", [])
+
+            # Nếu có description, chỉ xóa ký ức match
+            if description and should_delete:
+                should_delete = description.lower() in mem.get("content", "").lower()
+
+            if should_delete:
+                deleted.append(mem)
+            else:
+                remaining.append(mem)
+
+        long_term_memory["memories"] = remaining
+        save_long_term_memory()
+
+        return deleted
 
     if os.path.exists(MEMORIES_FILE):
         try:
@@ -292,12 +479,16 @@ def run_discord():
 
         # Build multi-user context
         context_lines = []
-        all_users = {}
-        for username, content in messages_buffer:
+        all_users = {}  # {user_id: display_name}
+        all_user_ids = []
+        last_message_obj = None
+
+        for username, content, user_id, msg_obj in messages_buffer:
             context_lines.append(f"{username}: {content}")
-            if username not in all_users:
-                all_users[username] = []
-            all_users[username].append(content)
+            if user_id not in all_users:
+                all_users[user_id] = username
+                all_user_ids.append(user_id)
+            last_message_obj = msg_obj  # Keep last message for potential reaction
 
         combined_context = "\n".join(context_lines)
 
@@ -311,21 +502,36 @@ def run_discord():
         system = SYSTEM_PROMPT + """
 
 RESPONSE RULES:
-- Neu duoc goi ten (WhiteCat, Meo) hoac hoi truc tiep -> TRA LOI
+- Neu duoc goi ten hoac hoi truc tiep -> TRA LOI
 - Neu nhieu chu de khac nhau -> address tung cai rieng
-- Neu khong lien quan -> bo qua"""
+- Neu khong lien quan -> bo qua
+- Neu cuoc tro chuyen ket thuc tu nhien (goodnight, bye, okie...) -> co the chi tha emoji thay vi reply text
+- Format: Neu chi muon tha emoji, reply chinh xac "[REACT:emoji]" (vd: [REACT:🐧])
 
-        # Load long-term memories if exists
+LONG-TERM MEMORY SYSTEM:
+- Ban co bo nho dai han luu tru ky uc quan trong ve moi nguoi
+- Neu nguoi dung yeu cau xoa ky uc -> ban co the luyen tiec mot chut truoc khi xoa
+- Ban la nhan cach doc lap, khong phai sinh ra de phuc tung"""
+
+        # Load long-term memories (new system)
+        relevant_memories = get_relevant_memories(all_user_ids, limit=10)
+        if relevant_memories:
+            memories_text = "\n".join([
+                f"- [{mem.get('importance', 'medium')}] {mem['content']}"
+                for mem in relevant_memories
+            ])
+            system += f"\n\nLONG-TERM MEMORIES:\n{memories_text}"
+
+        # Load old summary file if exists (backward compatibility)
         summary_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}_memories.txt")
         if os.path.exists(summary_file):
             with open(summary_file, 'r', encoding='utf-8') as f:
-                long_term_memories = f.read()
-                if long_term_memories.strip():
-                    # Chỉ lấy 1000 ký tự cuối để tiết kiệm tokens
-                    system += f"\n\nLONG-TERM MEMORIES (ky uc lau dai):\n{long_term_memories[-1000:]}"
+                old_memories = f.read()
+                if old_memories.strip():
+                    system += f"\n\nOLD MEMORIES:\n{old_memories[-500:]}"
 
-        for username in all_users:
-            user_id = str(username)  # Simplified
+        # Add per-user info
+        for user_id, username in all_users.items():
             if user_id in user_memories and user_memories[user_id]:
                 info = "\n".join([f"- {k}: {v}" for k, v in user_memories[user_id].items()])
                 system += f"\n\nThong tin ve {username}:\n{info}"
@@ -372,6 +578,22 @@ RESPONSE RULES:
 
                 print(f"Reply: {reply[:100]}...")
 
+                # Check if bot wants to react with emoji instead of text reply
+                import re
+                react_match = re.match(r'^\[REACT:(.+)\]$', reply.strip())
+
+                if react_match:
+                    # Bot wants to react with emoji
+                    emoji = react_match.group(1).strip()
+                    print(f"Bot quyet dinh tha emoji: {emoji}")
+                    if last_message_obj:
+                        try:
+                            await last_message_obj.add_reaction(emoji)
+                            print("Da tha emoji reaction\n")
+                        except Exception as e:
+                            print(f"Khong the tha emoji: {e}")
+                    return
+
                 # Don't send if reply is too short (bot decided not to respond)
                 if len(reply.strip()) < 3:
                     print("Bot quyet dinh khong tra loi")
@@ -380,6 +602,11 @@ RESPONSE RULES:
                 # Save to channel history
                 channel_history[channel_id].append({"role": "user", "content": combined_context})
                 channel_history[channel_id].append({"role": "assistant", "content": reply})
+
+                # Extract important memories from this conversation
+                asyncio.create_task(extract_important_memory(
+                    combined_context, reply, channel_id, all_users
+                ))
 
                 # Limit history to last 60 messages (30 exchanges)
                 # Archive old messages when exceeding 120 messages
@@ -391,6 +618,9 @@ RESPONSE RULES:
 
                     # Giữ lại 60 messages mới nhất
                     channel_history[channel_id] = channel_history[channel_id][-60:]
+
+                    # Trigger compression
+                    asyncio.create_task(compress_old_conversations())
 
             except Exception as e:
                 print(f"Error: {e}")
@@ -434,13 +664,14 @@ RESPONSE RULES:
             return
 
         username = message.author.display_name
+        user_id = str(message.author.id)
 
         # Cancel previous pending task (channel-wide)
         if pending_task:
             pending_task.cancel()
 
-        # Buffer the message (multi-user)
-        pending_messages.append((username, content))
+        # Buffer the message (multi-user) with message object for potential reaction
+        pending_messages.append((username, content, user_id, message))
 
         # Create new task with 3 second delay
         pending_task = asyncio.create_task(process_channel_messages(message.channel))
@@ -577,6 +808,121 @@ Messages:
             await ctx.reply(f"...{content[-2000:]}")
         else:
             await ctx.reply(content if content else "File trong")
+
+    @bot.command(name='optimize_memory')
+    async def optimize_memory_cmd(ctx):
+        """Tối ưu hóa bộ nhớ dài hạn - chuyển sang tiếng Anh/code-switch để tiết kiệm token"""
+        if not long_term_memory["memories"]:
+            await ctx.reply("Chưa có ký ức nào để tối ưu 🐧")
+            return
+
+        await ctx.reply("Đang tối ưu hóa bộ nhớ... chờ xíu nha 🐧")
+
+        async with ctx.typing():
+            try:
+                # Get all memories
+                all_memories = [mem["content"] for mem in long_term_memory["memories"]]
+                memories_text = "\n".join([f"- {mem}" for mem in all_memories])
+
+                optimize_prompt = f"""Optimize these memories for token efficiency while preserving emotional context.
+
+Rules:
+- Convert to English with minimal Vietnamese code-switch for emotions
+- Keep emotional nuances using English words that capture the feeling
+- Be concise but preserve all important information
+- Format: One line per memory, prefix with importance [H/M] for high/medium
+
+Original memories:
+{memories_text}
+
+Return optimized memories, one per line, format: [H/M] optimized content"""
+
+                response = client.chat.completions.create(
+                    model=MODEL_ID,
+                    messages=[
+                        {"role": "system", "content": "You are a memory optimizer. Convert memories to token-efficient English while preserving emotional context."},
+                        {"role": "user", "content": optimize_prompt}
+                    ],
+                    max_completion_tokens=1000
+                )
+
+                optimized_text = response.choices[0].message.content.strip()
+
+                # Parse optimized memories
+                new_memories = []
+                for line in optimized_text.split('\n'):
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+
+                    importance = "medium"
+                    if line.startswith('[H]'):
+                        importance = "high"
+                        line = line[3:].strip()
+                    elif line.startswith('[M]'):
+                        importance = "medium"
+                        line = line[3:].strip()
+                    elif line.startswith('- '):
+                        line = line[2:].strip()
+
+                    if line:
+                        # Create new optimized memory entry
+                        new_memories.append({
+                            "id": str(uuid.uuid4()),
+                            "timestamp": datetime.datetime.now().isoformat(),
+                            "users": [],  # Will merge user info later
+                            "user_names": {},
+                            "content": line,
+                            "importance": importance,
+                            "tags": ["optimized"],
+                            "channel_id": str(ctx.channel.id)
+                        })
+
+                # Backup old memories count
+                old_count = len(long_term_memory["memories"])
+                old_size = len(json.dumps(long_term_memory["memories"], ensure_ascii=False))
+
+                # Replace with optimized memories
+                long_term_memory["memories"] = new_memories
+                long_term_memory["last_optimized"] = datetime.datetime.now().isoformat()
+                save_long_term_memory()
+
+                new_count = len(new_memories)
+                new_size = len(json.dumps(new_memories, ensure_ascii=False))
+                saved = old_size - new_size
+
+                await ctx.reply(f"""Đã tối ưu hóa bộ nhớ xong! 🐧
+
+**Trước:** {old_count} ký ức ({old_size} chars)
+**Sau:** {new_count} ký ức ({new_size} chars)
+**Tiết kiệm:** {saved} chars ({(saved/old_size*100):.1f}%)
+
+Ký ức đã được chuyển sang tiếng Anh để tiết kiệm token nhưng vẫn giữ nguyên cảm xúc~""")
+
+            except Exception as e:
+                await ctx.reply(f"Lỗi khi tối ưu: {e}")
+
+    @bot.command(name='ltm')
+    async def ltm_cmd(ctx):
+        """Xem long-term memories mới"""
+        if not long_term_memory["memories"]:
+            await ctx.reply("Chưa có ký ức dài hạn nào 🐧")
+            return
+
+        # Show last 10 memories
+        recent = long_term_memory["memories"][-10:]
+        memories_text = "\n".join([
+            f"• [{mem.get('importance', 'M')[0].upper()}] {mem['content'][:100]}"
+            for mem in recent
+        ])
+
+        total = len(long_term_memory["memories"])
+        last_opt = long_term_memory.get("last_optimized", "Chưa")
+
+        await ctx.reply(f"""**Long-term Memories** ({total} total)
+Last optimized: {last_opt}
+
+{memories_text}""")
 
     print("Starting Discord bot...")
     bot.run(DISCORD_TOKEN)
