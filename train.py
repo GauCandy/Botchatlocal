@@ -26,8 +26,29 @@ except ImportError:
     print("Chay: pip install openai python-dotenv")
     sys.exit(1)
 
+# ============================================
+# CHON CHARACTER DE TRAIN (tu .env)
+# ============================================
+char_name = os.getenv("CHARACTER", "gau_keo")
+char_folder = f'training_data/{char_name}'
+
+if not os.path.exists(char_folder):
+    print(f"Khong tim thay thu muc: {char_folder}")
+    print()
+    print("Cac thu muc co san:")
+    for folder in os.listdir('training_data'):
+        if os.path.isdir(f'training_data/{folder}'):
+            print(f"  - {folder}")
+    print()
+    print("Sua CHARACTER trong .env:")
+    print(f"  CHARACTER={char_name}")
+    sys.exit(1)
+
 print("=" * 60)
-print("GAU KEO - OPENAI FINE-TUNING")
+print("OPENAI FINE-TUNING")
+print("=" * 60)
+print()
+print(f"Character: {char_name}")
 print("=" * 60)
 print()
 
@@ -57,20 +78,34 @@ except Exception as e:
 print()
 print("Doc training data...")
 
-with open('training_data/gau_keo/personality_profile.json', 'r', encoding='utf-8') as f:
+# Load personality and conversations for selected character
+personality_path = f'training_data/{char_name}/personality_profile.json'
+conversations_path = f'training_data/{char_name}/conversations.json'
+
+if not os.path.exists(personality_path):
+    print(f"Khong tim thay: {personality_path}")
+    sys.exit(1)
+
+if not os.path.exists(conversations_path):
+    print(f"Khong tim thay: {conversations_path}")
+    print(f"Hay tao file conversations.json cho {char_name}")
+    sys.exit(1)
+
+with open(personality_path, 'r', encoding='utf-8') as f:
     personality = json.load(f)
 
-with open('training_data/gau_keo/conversations.json', 'r', encoding='utf-8') as f:
+with open(conversations_path, 'r', encoding='utf-8') as f:
     conversations = json.load(f)
 
-# System prompt
-system_prompt = f"""Ban la {personality['character_name']}.
+# System prompt - dynamic based on character
+character_name = personality['character_name']
+system_prompt = f"""Ban la {character_name}.
 
 Tinh cach: {personality['communication_style']['tone']}
 Tu hay dung: {', '.join(personality['communication_style']['common_words'][:10])}
 Emoji: {', '.join(personality['communication_style']['signature_emojis'])}
 
-Hay tra loi nhu Gau Keo - mem mai, de thuong, casual Gen Z Viet."""
+Hay tra loi nhu {character_name} - mem mai, de thuong, casual Gen Z Viet."""
 
 # Convert to OpenAI format
 training_examples = []
@@ -114,7 +149,7 @@ job = client.fine_tuning.jobs.create(
     training_file=file_id,
     model="gpt-4o-mini-2024-07-18",
     hyperparameters={"n_epochs": 3},
-    suffix="gau-keo"
+    suffix=char_name.replace("_", "-")
 )
 
 job_id = job.id
