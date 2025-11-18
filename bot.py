@@ -52,44 +52,85 @@ if not MODEL_ID:
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ============================================
-# LOAD PERSONALITY
+# LOAD PERSONALITY & CONVERSATIONS
 # ============================================
-personality_path = "training_data/gau_keo/personality_profile.json"
+CHARACTER = os.getenv("CHARACTER", "gau_keo")
+personality_path = f"training_data/{CHARACTER}/personality_profile.json"
+conversations_path = f"training_data/{CHARACTER}/conversations.json"
+
+personality = None
+example_conversations = []
+
+# Load personality profile
 if os.path.exists(personality_path):
     with open(personality_path, 'r', encoding='utf-8') as f:
         personality = json.load(f)
 
-    SYSTEM_PROMPT = f"""Ban la {personality['character_name']}.
+# Bỏ few-shot examples để tiết kiệm tokens
+# Few-shot examples tốn quá nhiều tokens, personality profile đã đủ
+example_conversations = []
 
-Tinh cach: {personality['communication_style']['tone']}
-Tu hay dung: {', '.join(personality['communication_style']['common_words'][:10])}
-Emoji: {', '.join(personality['communication_style']['signature_emojis'])}
+# Build system prompt
+if personality:
+    char_name = personality['character_name']
+    core_traits = personality['personality_traits']['core_traits']
+    comm_style = personality['communication_style']
+
+    SYSTEM_PROMPT = f"""Ban la {char_name}.
+
+CORE IDENTITY:
+{personality['core_identity']['origin']}
+{personality['core_identity']['relationship_with_creator']}
+
+COMMUNICATION STYLE:
+- Tone: {comm_style['tone']}
+- Tu hay dung: {', '.join(comm_style['common_words'])}
+- Emoji: {', '.join(comm_style['signature_emojis'])}
+
+PERSONALITY TRAITS:
+{chr(10).join(f'- {trait}' for trait in core_traits[:5])}
+
+BEHAVIORAL RULES:
+- Tra loi casual, Gen Z Viet, code-switch vua phai
+- Dung emoji {comm_style['primary_emoji']} thuong xuyen
+- Phan bien va critical thinking - khong de dong y
+- Am ap va caring nhung honest, call out BS khi can
+- Tra loi ngan gon, tu nhien, khong ro rang khong tra loi
 
 QUAN TRONG:
-- Ban la Gau Keo, KHONG PHAI ChatGPT
-- Tra loi casual, mem mai, Gen Z Viet
-- Dung emoji penguin thuong xuyen
-- Tra loi ngan gon, tu nhien"""
+- Ban la {char_name}, KHONG PHAI ChatGPT hay AI assistant
+- Thua ke tinh cach tu {personality['core_identity']['creator']}
+- Dat cau hoi nguoc, challenge assumptions
+- Respectful nhung firm khi debate"""
 else:
-    SYSTEM_PROMPT = "Ban la Gau Keo. Tra loi mem mai, casual, Gen Z Viet."
+    SYSTEM_PROMPT = f"Ban la {CHARACTER}. Tra loi mem mai, casual, Gen Z Viet."
+    char_name = CHARACTER
 
 # ============================================
 # CHAT FUNCTION
 # ============================================
 def chat(message, history=None):
-    """Chat voi Gau Keo"""
+    """Chat voi character"""
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
+    # Add few-shot examples from training data
+    for example in example_conversations:
+        if 'conversation' in example:
+            for msg in example['conversation']:
+                messages.append(msg)
+
+    # Add conversation history
     if history:
         messages.extend(history)
 
+    # Add current user message
     messages.append({"role": "user", "content": message})
 
+    # GPT-5+ only supports temperature=1 (default) and max_completion_tokens
     response = client.chat.completions.create(
         model=MODEL_ID,
         messages=messages,
-        temperature=0.8,
-        max_tokens=500
+        max_completion_tokens=500
     )
 
     return response.choices[0].message.content
@@ -190,10 +231,13 @@ def run_discord():
         print("  3. Paste vao .env: DISCORD_TOKEN=...")
         sys.exit(1)
 
+    import asyncio
+
     # Memory system
     conversations = {}
     user_memories = {}
-    pending_messages = {}  # Buffer for messages to potentially combine
+    pending_task = None  # Single pending task for channel
+    pending_messages = []  # Buffered messages (user, content) for channel
 
     MEMORIES_FILE = "user_memories.json"
     if os.path.exists(MEMORIES_FILE):
@@ -207,41 +251,98 @@ def run_discord():
         with open(MEMORIES_FILE, 'w', encoding='utf-8') as f:
             json.dump(user_memories, f, ensure_ascii=False, indent=2)
 
-    def should_combine_messages(history, new_message, username):
-        """Ask AI if we should wait to combine messages or respond now"""
-        if not history:
-            return False, None
+    async def process_channel_messages(channel):
+        """Process buffered messages after 3 second timeout"""
+        nonlocal pending_messages
+        await asyncio.sleep(3)  # Wait 3 seconds
 
-        # Get last message
-        last_msg = history[-1] if history else None
-        if not last_msg or last_msg.get("role") != "user":
-            return False, None
+        if not pending_messages:
+            return
 
-        # Ask AI to decide
-        decision_prompt = f"""Nguoi dung [{username}] vua gui tin nhan moi.
+        # Get all buffered messages
+        messages_buffer = pending_messages.copy()
+        pending_messages = []
 
-Tin nhan truoc: {last_msg['content']}
-Tin nhan moi: {new_message}
+        # Build multi-user context
+        context_lines = []
+        all_users = {}
+        for username, content in messages_buffer:
+            context_lines.append(f"[{username}]: {content}")
+            if username not in all_users:
+                all_users[username] = []
+            all_users[username].append(content)
 
-Cau hoi: Tin nhan moi nay co nen gop voi tin nhan truoc de tra loi 1 lan khong?
-- Neu 2 tin lien quan hoac nguoi dung dang noi tiep -> tra loi "GOP"
-- Neu tin moi la chu de khac hoac can tra loi rieng -> tra loi "TACH"
+        combined_context = "\n".join(context_lines)
 
-Chi tra loi 1 tu: GOP hoac TACH"""
+        # Log what bot is processing
+        print("\n" + "="*60)
+        print("BOT PROCESSING:")
+        print(combined_context)
+        print("="*60)
 
-        try:
-            # Use base model for decision (cheaper, better for logic)
-            decision_model = os.getenv("DECISION_MODEL", "gpt-4o-mini")
-            response = client.chat.completions.create(
-                model=decision_model,
-                messages=[{"role": "user", "content": decision_prompt}],
-                temperature=0.3,
-                max_tokens=10
-            )
-            decision = response.choices[0].message.content.strip().upper()
-            return "GOP" in decision, last_msg['content']
-        except:
-            return False, None
+        # Build context - simplified to save tokens
+        system = SYSTEM_PROMPT + """
+
+RESPONSE RULES:
+- Neu duoc goi ten (WhiteCat, Meo) hoac hoi truc tiep -> TRA LOI
+- Neu nhieu chu de khac nhau -> address tung cai rieng
+- Neu khong lien quan -> bo qua"""
+
+        for username in all_users:
+            user_id = str(username)  # Simplified
+            if user_id in user_memories and user_memories[user_id]:
+                info = "\n".join([f"- {k}: {v}" for k, v in user_memories[user_id].items()])
+                system += f"\n\nThong tin ve {username}:\n{info}"
+
+        # Chat with multi-topic awareness
+        async with channel.typing():
+            try:
+                print("Dang suy luan voi GPT-5...")
+                import time
+                start_time = time.time()
+
+                messages = [{"role": "system", "content": system}]
+                messages.append({"role": "user", "content": combined_context})
+
+                response = client.chat.completions.create(
+                    model=MODEL_ID,
+                    messages=messages,
+                    max_completion_tokens=1000  # Tăng lên để đủ cho cả reasoning và output
+                )
+
+                elapsed = time.time() - start_time
+                print(f"Hoan thanh sau {elapsed:.2f}s")
+
+                reply = response.choices[0].message.content
+
+                # Log reasoning if available
+                if hasattr(response.choices[0].message, 'reasoning_content'):
+                    print("\n--- REASONING PROCESS ---")
+                    print(response.choices[0].message.reasoning_content)
+                    print("--- END REASONING ---\n")
+
+                # Log usage
+                if hasattr(response, 'usage'):
+                    print(f"Tokens: {response.usage.total_tokens} total")
+                    if hasattr(response.usage, 'completion_tokens_details'):
+                        details = response.usage.completion_tokens_details
+                        if hasattr(details, 'reasoning_tokens'):
+                            print(f"  - Reasoning: {details.reasoning_tokens}")
+
+                print(f"Reply: {reply[:100]}...")
+
+                # Don't send if reply is too short (bot decided not to respond)
+                if len(reply.strip()) < 3:
+                    print("Bot quyet dinh khong tra loi")
+                    return
+
+            except Exception as e:
+                print(f"Error: {e}")
+                reply = f"Loi: {e}"
+
+        # Send reply
+        print("Gui reply...\n")
+        await channel.send(reply)
 
     # Bot setup
     intents = discord.Intents.default()
@@ -263,6 +364,8 @@ Chi tra loi 1 tu: GOP hoac TACH"""
 
     @bot.event
     async def on_message(message):
+        nonlocal pending_task
+
         if message.author == bot.user:
             return
 
@@ -274,63 +377,17 @@ Chi tra loi 1 tu: GOP hoac TACH"""
             await bot.process_commands(message)
             return
 
-        user_id = str(message.author.id)
         username = message.author.display_name
 
-        # Get history
-        if user_id not in conversations:
-            conversations[user_id] = []
+        # Cancel previous pending task (channel-wide)
+        if pending_task:
+            pending_task.cancel()
 
-        # Check if should combine with previous message
-        should_combine, prev_content = should_combine_messages(
-            conversations[user_id],
-            content,
-            username
-        )
+        # Buffer the message (multi-user)
+        pending_messages.append((username, content))
 
-        if should_combine and prev_content:
-            # Remove last user message and combine
-            if conversations[user_id] and conversations[user_id][-1].get("role") == "user":
-                conversations[user_id].pop()
-            # Combine messages
-            combined_content = f"{prev_content}\n{content}"
-            final_content = f"[{username}]: {combined_content}"
-        else:
-            final_content = f"[{username}]: {content}"
-
-        # Build context
-        system = SYSTEM_PROMPT
-        if user_id in user_memories and user_memories[user_id]:
-            info = "\n".join([f"- {k}: {v}" for k, v in user_memories[user_id].items()])
-            system += f"\n\nThong tin ve {username}:\n{info}"
-
-        # Chat
-        async with message.channel.typing():
-            try:
-                messages = [{"role": "system", "content": system}]
-                messages.extend(conversations[user_id])
-                messages.append({"role": "user", "content": final_content})
-
-                response = client.chat.completions.create(
-                    model=MODEL_ID,
-                    messages=messages,
-                    temperature=0.8,
-                    max_tokens=500
-                )
-
-                reply = response.choices[0].message.content
-
-                # Save history
-                conversations[user_id].append({"role": "user", "content": final_content})
-                conversations[user_id].append({"role": "assistant", "content": reply})
-
-                if len(conversations[user_id]) > 40:
-                    conversations[user_id] = conversations[user_id][-40:]
-
-            except Exception as e:
-                reply = f"Loi: {e}"
-
-        await message.reply(reply, mention_author=False)
+        # Create new task with 3 second delay
+        pending_task = asyncio.create_task(process_channel_messages(message.channel))
 
     @bot.command(name='clear')
     async def clear_cmd(ctx):

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 15 python:*)",
+      "Bash(python -c \"from bot import *; print(chat(''xin chao Meo oi''))\")",
+      "Bash(timeout 30 python:*)",
+      "Bash(test:*)",
+      "Bash(python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
