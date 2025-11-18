@@ -164,9 +164,9 @@ else:  # local
     model = PeftModel.from_pretrained(model, model_path)
     model.eval()
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Model loaded!")
-    print(f"Device: {device.upper()}")
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if device == "cuda":
         print(f"GPU: {torch.cuda.get_device_name(0)}")
