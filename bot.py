@@ -252,7 +252,7 @@ def run_discord():
             try:
                 messages = [{"role": "system", "content": system}]
                 messages.extend(conversations[user_id])
-                messages.append({"role": "user", "content": content})
+                messages.append({"role": "user", "content": f"[{username}]: {content}"})
 
                 response = client.chat.completions.create(
                     model=MODEL_ID,
@@ -264,7 +264,7 @@ def run_discord():
                 reply = response.choices[0].message.content
 
                 # Save history
-                conversations[user_id].append({"role": "user", "content": content})
+                conversations[user_id].append({"role": "user", "content": f"[{username}]: {content}"})
                 conversations[user_id].append({"role": "assistant", "content": reply})
 
                 if len(conversations[user_id]) > 40:
