@@ -2,7 +2,10 @@
 """
 Train Gau Keo voi OpenAI Fine-tuning
 
-Chay: python train.py
+Chay:
+  python train.py           # Train model moi
+  python train.py --list    # Xem danh sach jobs
+  python train.py --cancel  # Huy job dang chay
 """
 
 import json
@@ -25,6 +28,54 @@ except ImportError:
     print("Chua cai OpenAI library!")
     print("Chay: pip install openai python-dotenv")
     sys.exit(1)
+
+# ============================================
+# CHECK API KEY FIRST
+# ============================================
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("Khong tim thay OPENAI_API_KEY trong .env!")
+    sys.exit(1)
+
+client = OpenAI(api_key=api_key)
+
+# ============================================
+# COMMAND LINE OPTIONS
+# ============================================
+if "--list" in sys.argv:
+    print("Danh sach fine-tune jobs:")
+    print()
+    jobs = client.fine_tuning.jobs.list(limit=10)
+    for job in jobs.data:
+        print(f"  ID: {job.id}")
+        print(f"  Status: {job.status}")
+        print(f"  Model: {job.model}")
+        if job.fine_tuned_model:
+            print(f"  Result: {job.fine_tuned_model}")
+        print()
+    sys.exit(0)
+
+if "--cancel" in sys.argv:
+    # Get job ID from file or argument
+    job_id = None
+    if len(sys.argv) > 2:
+        job_id = sys.argv[2]
+    elif os.path.exists('openai_job_id.txt'):
+        with open('openai_job_id.txt', 'r') as f:
+            job_id = f.read().strip()
+
+    if not job_id:
+        print("Khong tim thay job ID!")
+        print("Chay: python train.py --cancel <job_id>")
+        print("Hoac: python train.py --list de xem danh sach")
+        sys.exit(1)
+
+    try:
+        client.fine_tuning.jobs.cancel(job_id)
+        print(f"Da huy job: {job_id}")
+    except Exception as e:
+        print(f"Loi khi huy: {e}")
+    sys.exit(0)
 
 # ============================================
 # CHON CHARACTER DE TRAIN (tu .env)
@@ -52,25 +103,7 @@ print(f"Character: {char_name}")
 print("=" * 60)
 print()
 
-# ============================================
-# BUOC 1: Check API key
-# ============================================
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Khong tim thay OPENAI_API_KEY trong .env!")
-    print()
-    print("Tao file .env voi noi dung:")
-    print("  OPENAI_API_KEY=sk-proj-...")
-    print()
-    print("Lay API key tai: https://platform.openai.com/api-keys")
-    sys.exit(1)
-
-try:
-    client = OpenAI(api_key=api_key)
-    print("API key OK!")
-except Exception as e:
-    print(f"Loi ket noi OpenAI: {e}")
-    sys.exit(1)
+print("API key OK!")
 
 # ============================================
 # BUOC 2: Load training data
@@ -152,13 +185,31 @@ print(f"File uploaded: {file_id}")
 # BUOC 4: Create fine-tune job
 # ============================================
 print()
+
+# Get base model from env or use default
+base_model = os.getenv("FINETUNE_BASE_MODEL", "gpt-4o-mini-2024-07-18")
+
 print("Tao fine-tune job...")
-print("Model: gpt-4o-mini-2024-07-18")
+print(f"Model: {base_model}")
+print(f"Training examples: {len(training_examples)}")
 print()
+
+# Confirm before creating job (costs money!)
+print("CANH BAO: Fine-tuning se ton tien!")
+confirm = input("Tiep tuc? (y/n): ").lower()
+if confirm != 'y':
+    print("Da huy.")
+    # Delete uploaded file
+    try:
+        client.files.delete(file_id)
+        print(f"Da xoa file: {file_id}")
+    except:
+        pass
+    sys.exit(0)
 
 job = client.fine_tuning.jobs.create(
     training_file=file_id,
-    model="gpt-4o-mini-2024-07-18",
+    model=base_model,
     hyperparameters={"n_epochs": 3},
     suffix=char_name.replace("_", "-")
 )
