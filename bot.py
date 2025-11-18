@@ -36,14 +36,17 @@ if not OPENAI_API_KEY:
     print("Can OPENAI_API_KEY trong file .env!")
     sys.exit(1)
 
-# Load model ID
-try:
-    with open('openai_model_id.txt', 'r') as f:
-        MODEL_ID = f.read().strip()
-except FileNotFoundError:
-    print("Khong tim thay openai_model_id.txt!")
-    print("Chay train truoc: python train.py")
-    sys.exit(1)
+# Load model ID - from env or file
+MODEL_ID = os.getenv("OPENAI_MODEL_ID")
+if not MODEL_ID:
+    try:
+        with open('openai_model_id.txt', 'r') as f:
+            MODEL_ID = f.read().strip()
+    except FileNotFoundError:
+        print("Khong tim thay model ID!")
+        print("Cach 1: Them OPENAI_MODEL_ID vao .env")
+        print("Cach 2: Chay train truoc: python train.py")
+        sys.exit(1)
 
 # OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -190,6 +193,7 @@ def run_discord():
     # Memory system
     conversations = {}
     user_memories = {}
+    pending_messages = {}  # Buffer for messages to potentially combine
 
     MEMORIES_FILE = "user_memories.json"
     if os.path.exists(MEMORIES_FILE):
@@ -202,6 +206,42 @@ def run_discord():
     def save_memories():
         with open(MEMORIES_FILE, 'w', encoding='utf-8') as f:
             json.dump(user_memories, f, ensure_ascii=False, indent=2)
+
+    def should_combine_messages(history, new_message, username):
+        """Ask AI if we should wait to combine messages or respond now"""
+        if not history:
+            return False, None
+
+        # Get last message
+        last_msg = history[-1] if history else None
+        if not last_msg or last_msg.get("role") != "user":
+            return False, None
+
+        # Ask AI to decide
+        decision_prompt = f"""Nguoi dung [{username}] vua gui tin nhan moi.
+
+Tin nhan truoc: {last_msg['content']}
+Tin nhan moi: {new_message}
+
+Cau hoi: Tin nhan moi nay co nen gop voi tin nhan truoc de tra loi 1 lan khong?
+- Neu 2 tin lien quan hoac nguoi dung dang noi tiep -> tra loi "GOP"
+- Neu tin moi la chu de khac hoac can tra loi rieng -> tra loi "TACH"
+
+Chi tra loi 1 tu: GOP hoac TACH"""
+
+        try:
+            # Use base model for decision (cheaper, better for logic)
+            decision_model = os.getenv("DECISION_MODEL", "gpt-4o-mini")
+            response = client.chat.completions.create(
+                model=decision_model,
+                messages=[{"role": "user", "content": decision_prompt}],
+                temperature=0.3,
+                max_tokens=10
+            )
+            decision = response.choices[0].message.content.strip().upper()
+            return "GOP" in decision, last_msg['content']
+        except:
+            return False, None
 
     # Bot setup
     intents = discord.Intents.default()
@@ -241,6 +281,23 @@ def run_discord():
         if user_id not in conversations:
             conversations[user_id] = []
 
+        # Check if should combine with previous message
+        should_combine, prev_content = should_combine_messages(
+            conversations[user_id],
+            content,
+            username
+        )
+
+        if should_combine and prev_content:
+            # Remove last user message and combine
+            if conversations[user_id] and conversations[user_id][-1].get("role") == "user":
+                conversations[user_id].pop()
+            # Combine messages
+            combined_content = f"{prev_content}\n{content}"
+            final_content = f"[{username}]: {combined_content}"
+        else:
+            final_content = f"[{username}]: {content}"
+
         # Build context
         system = SYSTEM_PROMPT
         if user_id in user_memories and user_memories[user_id]:
@@ -252,7 +309,7 @@ def run_discord():
             try:
                 messages = [{"role": "system", "content": system}]
                 messages.extend(conversations[user_id])
-                messages.append({"role": "user", "content": content})
+                messages.append({"role": "user", "content": final_content})
 
                 response = client.chat.completions.create(
                     model=MODEL_ID,
@@ -264,7 +321,7 @@ def run_discord():
                 reply = response.choices[0].message.content
 
                 # Save history
-                conversations[user_id].append({"role": "user", "content": content})
+                conversations[user_id].append({"role": "user", "content": final_content})
                 conversations[user_id].append({"role": "assistant", "content": reply})
 
                 if len(conversations[user_id]) > 40:

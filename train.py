@@ -80,22 +80,33 @@ print("Doc training data...")
 
 # Load personality and conversations for selected character
 personality_path = f'training_data/{char_name}/personality_profile.json'
-conversations_path = f'training_data/{char_name}/conversations.json'
 
 if not os.path.exists(personality_path):
     print(f"Khong tim thay: {personality_path}")
     sys.exit(1)
 
-if not os.path.exists(conversations_path):
-    print(f"Khong tim thay: {conversations_path}")
-    print(f"Hay tao file conversations.json cho {char_name}")
-    sys.exit(1)
-
 with open(personality_path, 'r', encoding='utf-8') as f:
     personality = json.load(f)
 
-with open(conversations_path, 'r', encoding='utf-8') as f:
-    conversations = json.load(f)
+# Load all conversation files in character folder
+conversations = []
+char_folder_path = Path(f'training_data/{char_name}')
+
+for json_file in char_folder_path.glob('*.json'):
+    if json_file.name == 'personality_profile.json':
+        continue
+
+    with open(json_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if isinstance(data, list) and len(data) > 0 and 'conversation' in data[0]:
+            conversations.extend(data)
+            print(f"  - {json_file.name}: {len(data)} conversations")
+
+if not conversations:
+    print(f"Khong tim thay conversation files trong {char_folder}")
+    sys.exit(1)
+
+print(f"Tong cong: {len(conversations)} conversations")
 
 # System prompt - dynamic based on character
 character_name = personality['character_name']
@@ -115,7 +126,7 @@ for conv in conversations:
     training_examples.append({"messages": messages})
 
 # Save JSONL
-output_file = Path("training_data/openai_finetune.jsonl")
+output_file = Path(f"training_data/openai_{char_name}_finetune.jsonl")
 with open(output_file, 'w', encoding='utf-8') as f:
     for example in training_examples:
         f.write(json.dumps(example, ensure_ascii=False) + '\n')
