@@ -164,9 +164,9 @@ else:  # local
     model = PeftModel.from_pretrained(model, model_path)
     model.eval()
 
-    print("Model loaded!")
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Model loaded!")
+    print(f"Device: {device.upper()}")
 
     def chat(message):
         prompt = f"""<|system|>
