@@ -27,42 +27,28 @@ except ImportError:
     sys.exit(1)
 
 # ============================================
-# CHON CHARACTER DE TRAIN
+# CHON CHARACTER DE TRAIN (tu .env)
 # ============================================
-AVAILABLE_CHARACTERS = {
-    "1": {
-        "name": "gau_keo",
-        "display": "Gấu Kẹo 🐧",
-        "suffix": "gau-keo"
-    },
-    "2": {
-        "name": "whitecat",
-        "display": "WhiteCat 🐱",
-        "suffix": "whitecat"
-    }
-}
+char_name = os.getenv("CHARACTER", "gau_keo")
+char_folder = f'training_data/{char_name}'
+
+if not os.path.exists(char_folder):
+    print(f"Khong tim thay thu muc: {char_folder}")
+    print()
+    print("Cac thu muc co san:")
+    for folder in os.listdir('training_data'):
+        if os.path.isdir(f'training_data/{folder}'):
+            print(f"  - {folder}")
+    print()
+    print("Sua CHARACTER trong .env:")
+    print(f"  CHARACTER={char_name}")
+    sys.exit(1)
 
 print("=" * 60)
 print("OPENAI FINE-TUNING")
 print("=" * 60)
 print()
-print("Chon character de train:")
-for key, char in AVAILABLE_CHARACTERS.items():
-    print(f"  {key}. {char['display']}")
-print()
-
-choice = input("Nhap so (1/2): ").strip()
-if choice not in AVAILABLE_CHARACTERS:
-    print("Lua chon khong hop le!")
-    sys.exit(1)
-
-selected_char = AVAILABLE_CHARACTERS[choice]
-char_name = selected_char["name"]
-char_display = selected_char["display"]
-char_suffix = selected_char["suffix"]
-
-print()
-print(f"Da chon: {char_display}")
+print(f"Character: {char_name}")
 print("=" * 60)
 print()
 
@@ -102,7 +88,7 @@ if not os.path.exists(personality_path):
 
 if not os.path.exists(conversations_path):
     print(f"Khong tim thay: {conversations_path}")
-    print(f"Hay tao file conversations.json cho {char_display}")
+    print(f"Hay tao file conversations.json cho {char_name}")
     sys.exit(1)
 
 with open(personality_path, 'r', encoding='utf-8') as f:
@@ -163,7 +149,7 @@ job = client.fine_tuning.jobs.create(
     training_file=file_id,
     model="gpt-4o-mini-2024-07-18",
     hyperparameters={"n_epochs": 3},
-    suffix=char_suffix
+    suffix=char_name.replace("_", "-")
 )
 
 job_id = job.id
