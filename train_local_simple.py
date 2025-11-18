@@ -10,6 +10,13 @@ Chạy: python train_local_simple.py
 import os
 import json
 import sys
+import warnings
+
+# Suppress Triton CUDA warnings (không ảnh hưởng training)
+warnings.filterwarnings("ignore", message="Failed to find CUDA")
+warnings.filterwarnings("ignore", message="Failed to find cuobjdump")
+warnings.filterwarnings("ignore", message="Failed to find nvdisasm")
+os.environ["TRITON_PTXAS_PATH"] = ""  # Prevent Triton from searching
 
 print("=" * 60)
 print("🐧 GẤU KẸO - LOCAL GPU TRAINING (Simple)")
