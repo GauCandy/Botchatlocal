@@ -26,8 +26,43 @@ except ImportError:
     print("Chay: pip install openai python-dotenv")
     sys.exit(1)
 
+# ============================================
+# CHON CHARACTER DE TRAIN
+# ============================================
+AVAILABLE_CHARACTERS = {
+    "1": {
+        "name": "gau_keo",
+        "display": "Gấu Kẹo 🐧",
+        "suffix": "gau-keo"
+    },
+    "2": {
+        "name": "whitecat",
+        "display": "WhiteCat 🐱",
+        "suffix": "whitecat"
+    }
+}
+
 print("=" * 60)
-print("GAU KEO - OPENAI FINE-TUNING")
+print("OPENAI FINE-TUNING")
+print("=" * 60)
+print()
+print("Chon character de train:")
+for key, char in AVAILABLE_CHARACTERS.items():
+    print(f"  {key}. {char['display']}")
+print()
+
+choice = input("Nhap so (1/2): ").strip()
+if choice not in AVAILABLE_CHARACTERS:
+    print("Lua chon khong hop le!")
+    sys.exit(1)
+
+selected_char = AVAILABLE_CHARACTERS[choice]
+char_name = selected_char["name"]
+char_display = selected_char["display"]
+char_suffix = selected_char["suffix"]
+
+print()
+print(f"Da chon: {char_display}")
 print("=" * 60)
 print()
 
@@ -57,20 +92,34 @@ except Exception as e:
 print()
 print("Doc training data...")
 
-with open('training_data/gau_keo/personality_profile.json', 'r', encoding='utf-8') as f:
+# Load personality and conversations for selected character
+personality_path = f'training_data/{char_name}/personality_profile.json'
+conversations_path = f'training_data/{char_name}/conversations.json'
+
+if not os.path.exists(personality_path):
+    print(f"Khong tim thay: {personality_path}")
+    sys.exit(1)
+
+if not os.path.exists(conversations_path):
+    print(f"Khong tim thay: {conversations_path}")
+    print(f"Hay tao file conversations.json cho {char_display}")
+    sys.exit(1)
+
+with open(personality_path, 'r', encoding='utf-8') as f:
     personality = json.load(f)
 
-with open('training_data/gau_keo/conversations.json', 'r', encoding='utf-8') as f:
+with open(conversations_path, 'r', encoding='utf-8') as f:
     conversations = json.load(f)
 
-# System prompt
-system_prompt = f"""Ban la {personality['character_name']}.
+# System prompt - dynamic based on character
+character_name = personality['character_name']
+system_prompt = f"""Ban la {character_name}.
 
 Tinh cach: {personality['communication_style']['tone']}
 Tu hay dung: {', '.join(personality['communication_style']['common_words'][:10])}
 Emoji: {', '.join(personality['communication_style']['signature_emojis'])}
 
-Hay tra loi nhu Gau Keo - mem mai, de thuong, casual Gen Z Viet."""
+Hay tra loi nhu {character_name} - mem mai, de thuong, casual Gen Z Viet."""
 
 # Convert to OpenAI format
 training_examples = []
@@ -114,7 +163,7 @@ job = client.fine_tuning.jobs.create(
     training_file=file_id,
     model="gpt-4o-mini-2024-07-18",
     hyperparameters={"n_epochs": 3},
-    suffix="gau-keo"
+    suffix=char_suffix
 )
 
 job_id = job.id
