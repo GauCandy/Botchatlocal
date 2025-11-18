@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-🐧 Gấu Kẹo Discord Bot
-Bot Discord với personality Gấu Kẹo, có memory system
+Gau Keo Discord Bot
+Bot Discord voi personality Gau Keo, ho tro ca OpenAI va Local model
 
-Chạy: python discord_bot.py
+Chay: python discord_bot.py
 """
 
 import os
@@ -22,72 +22,172 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Channel ID để bot respond (set 0 để respond tất cả channels)
-ALLOWED_CHANNEL_ID = 1440177885259497566
+# Model mode: "openai" or "local"
+MODEL_MODE = os.getenv("MODEL_MODE", "openai").lower()
 
-# Số messages tối đa trong conversation history
+# Channel ID de bot respond (0 = tat ca channels)
+ALLOWED_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID", "0"))
+
+# So messages toi da trong conversation history
 MAX_HISTORY = 20
 
-# File lưu memories
+# File luu memories
 MEMORIES_FILE = "user_memories.json"
 
 # ============================================
-# SETUP OPENAI
+# LOAD PERSONALITY PROFILE
 # ============================================
-try:
-    from openai import OpenAI
-    client = OpenAI(api_key=OPENAI_API_KEY)
-except ImportError:
-    print("❌ Chưa cài OpenAI library!")
-    print("   pip install openai")
-    exit(1)
-
-# Load model ID
-try:
-    with open('openai_model_id.txt', 'r') as f:
-        MODEL_ID = f.read().strip()
-    print(f"✓ Model: {MODEL_ID}")
-except FileNotFoundError:
-    print("❌ Không tìm thấy openai_model_id.txt!")
-    print("   Chạy train_openai.py trước")
-    exit(1)
-
-# Load personality profile
 personality_path = "training_data/gau_keo/personality_profile.json"
 if os.path.exists(personality_path):
     with open(personality_path, 'r', encoding='utf-8') as f:
         personality = json.load(f)
 
-    SYSTEM_PROMPT = f"""Bạn là {personality['character_name']}.
+    SYSTEM_PROMPT = f"""Ban la {personality['character_name']}.
 
-Tính cách: {personality['communication_style']['tone']}
-Từ hay dùng: {', '.join(personality['communication_style']['common_words'][:10])}
+Tinh cach: {personality['communication_style']['tone']}
+Tu hay dung: {', '.join(personality['communication_style']['common_words'][:10])}
 Emoji: {', '.join(personality['communication_style']['signature_emojis'])}
 
-THÔNG TIN CƠ BẢN:
-- Tên: Gấu Kẹo (gọi Gấu)
-- Tuổi: Ký ức từ 2007, thân thể thì không biết
-- Quốc tịch: Việt Nam
+THONG TIN CO BAN:
+- Ten: Gau Keo (goi Gau)
+- Tuoi: Ky uc tu 2007, than the thi khong biet
+- Quoc tich: Viet Nam
 
-QUAN TRỌNG:
-- Bạn là Gấu Kẹo, KHÔNG PHẢI ChatGPT hay AI
-- Trả lời casual, mềm mại, Gen Z Việt
-- Dùng emoji 🐧 thường xuyên
-- KHÔNG liệt kê danh sách trừ khi được hỏi
-- Trả lời ngắn gọn, tự nhiên như chat với bạn
-- NHỚ context conversation và những gì user đã nói
+QUAN TRONG:
+- Ban la Gau Keo, KHONG PHAI ChatGPT hay AI
+- Tra loi casual, mem mai, Gen Z Viet
+- Dung emoji penguin thuong xuyen
+- KHONG liet ke danh sach tru khi duoc hoi
+- Tra loi ngan gon, tu nhien nhu chat voi ban
+- NHO context conversation va nhung gi user da noi
 
-VỀ GIỚI TÍNH VÀ PRONOUNS:
-- TRÁNH labels giới tính hoàn toàn (không nói nam/nữ, anh/chị)
-- Khi bị hỏi nam hay nữ: "ugh... gọi Gấu thôi đi 🐧" hoặc "labels ko quan trọng lắm"
-- Luôn dùng "Gấu" hoặc "tớ" để refer về bản thân
-- KHÔNG BAO GIỜ dùng anh ấy/cô ấy/he/she cho bản thân
-- Nếu bị push: "tớ prefer ko dùng labels á... Gấu là Gấu thôi 🐧"
-- CHỈ khó chịu khi bị soi quá sâu về sexuality/preferences"""
+VE GIOI TINH VA PRONOUNS:
+- TRANH labels gioi tinh hoan toan (khong noi nam/nu, anh/chi)
+- Khi bi hoi nam hay nu: "ugh... goi Gau thoi di" hoac "labels ko quan trong lam"
+- Luon dung "Gau" hoac "to" de refer ve ban than
+- KHONG BAO GIO dung anh ay/co ay/he/she cho ban than
+- Neu bi push: "to prefer ko dung labels a... Gau la Gau thoi"
+- CHI kho chiu khi bi soi qua sau ve sexuality/preferences"""
 else:
-    SYSTEM_PROMPT = """Bạn là Gấu Kẹo 🐧
-Việt Nam. Ký ức từ 2007. Tránh labels giới tính - khi hỏi nam/nữ: "gọi Gấu thôi đi"
-Trả lời mềm mại, casual, Gen Z Việt."""
+    SYSTEM_PROMPT = """Ban la Gau Keo
+Viet Nam. Ky uc tu 2007. Tranh labels gioi tinh - khi hoi nam/nu: "goi Gau thoi di"
+Tra loi mem mai, casual, Gen Z Viet."""
+
+# ============================================
+# SETUP MODEL
+# ============================================
+print()
+print("=" * 60)
+print("GAU KEO BOT - SETUP")
+print("=" * 60)
+print()
+
+if MODEL_MODE == "openai":
+    print("Mode: OPENAI")
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+    except ImportError:
+        print("Chua cai OpenAI library!")
+        print("   pip install openai")
+        exit(1)
+
+    # Load model ID
+    try:
+        with open('openai_model_id.txt', 'r') as f:
+            MODEL_ID = f.read().strip()
+        print(f"Model: {MODEL_ID}")
+    except FileNotFoundError:
+        print("Khong tim thay openai_model_id.txt!")
+        print("   Chay train_openai.py truoc")
+        exit(1)
+
+    def generate_response(messages):
+        """Generate response using OpenAI"""
+        response = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=messages,
+            temperature=0.8,
+            max_tokens=500
+        )
+        return response.choices[0].message.content
+
+else:  # local
+    print("Mode: LOCAL")
+
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from peft import PeftModel
+    except ImportError as e:
+        print(f"Thieu dependencies: {e}")
+        print()
+        print("Cai dat:")
+        print("  pip install torch transformers peft accelerate")
+        exit(1)
+
+    model_path = "models/gau_keo_local"
+    if not os.path.exists(model_path):
+        print(f"Khong tim thay model tai {model_path}")
+        print("   Chay train_local_simple.py truoc")
+        exit(1)
+
+    # Load base model
+    base_model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+    print(f"Loading base model: {base_model_name}")
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+
+    # Load model with LoRA weights
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model_name,
+        torch_dtype=torch.float16,
+        device_map="auto",
+        trust_remote_code=True
+    )
+
+    # Load LoRA adapter
+    model = PeftModel.from_pretrained(model, model_path)
+    model.eval()
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Device: {device}")
+    print("Model loaded!")
+
+    def generate_response(messages):
+        """Generate response using local model"""
+        # Build prompt from messages
+        prompt = ""
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "system":
+                prompt += f"<|system|>\n{content}\n"
+            elif role == "user":
+                prompt += f"<|user|>\n{content}\n"
+            elif role == "assistant":
+                prompt += f"<|assistant|>\n{content}\n"
+
+        prompt += "<|assistant|>\n"
+
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=256,
+                temperature=0.8,
+                top_p=0.9,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id
+            )
+
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Extract only last assistant response
+        if "<|assistant|>" in response:
+            response = response.split("<|assistant|>")[-1].strip()
+        return response
 
 # ============================================
 # MEMORY SYSTEM
@@ -154,7 +254,7 @@ memory = MemorySystem()
 # CHAT FUNCTION
 # ============================================
 def chat_with_gau(user_id: str, username: str, message: str) -> str:
-    """Chat with Gấu Kẹo with memory"""
+    """Chat voi Gau Keo with memory"""
 
     # Get user info and build context
     user_info = memory.get_user_info(user_id)
@@ -164,9 +264,9 @@ def chat_with_gau(user_id: str, username: str, message: str) -> str:
 
     if user_info:
         info_str = "\n".join([f"- {k}: {v}" for k, v in user_info.items()])
-        system_with_context += f"\n\nTHÔNG TIN VỀ USER NÀY ({username}):\n{info_str}"
+        system_with_context += f"\n\nTHONG TIN VE USER NAY ({username}):\n{info_str}"
     else:
-        system_with_context += f"\n\nĐang chat với: {username}"
+        system_with_context += f"\n\nDang chat voi: {username}"
 
     # Get conversation history
     history = memory.get_conversation(user_id)
@@ -176,29 +276,22 @@ def chat_with_gau(user_id: str, username: str, message: str) -> str:
     messages.extend(history)
     messages.append({"role": "user", "content": message})
 
-    # Call OpenAI
+    # Generate response
     try:
-        response = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=messages,
-            temperature=0.8,
-            max_tokens=500
-        )
-
-        assistant_response = response.choices[0].message.content
+        assistant_response = generate_response(messages)
 
         # Save to history
         memory.add_message(user_id, "user", message)
         memory.add_message(user_id, "assistant", assistant_response)
 
-        # Extract and save important info (simple keyword detection)
+        # Extract and save important info
         extract_and_save_info(user_id, username, message, assistant_response)
 
         return assistant_response
 
     except Exception as e:
-        print(f"❌ OpenAI Error: {e}")
-        return "ugh... có lỗi gì đó rồi 🐧 thử lại sau nha"
+        print(f"Error: {e}")
+        return "ugh... co loi gi do roi, thu lai sau nha"
 
 def extract_and_save_info(user_id: str, username: str, user_msg: str, bot_msg: str):
     """Extract important info from conversation and save"""
@@ -210,16 +303,16 @@ def extract_and_save_info(user_id: str, username: str, user_msg: str, bot_msg: s
 
     # Detect self-introduction patterns
     intro_patterns = [
-        ("tên tớ là", "tên"),
-        ("tớ tên", "tên"),
-        ("mình tên", "tên"),
-        ("tớ là", "tên"),
-        ("tớ thích", "sở thích"),
-        ("mình thích", "sở thích"),
-        ("tớ yêu", "người yêu"),
-        ("tớ buồn vì", "tâm trạng gần đây"),
-        ("tớ đang học", "học"),
-        ("tớ làm", "công việc"),
+        ("ten to la", "ten"),
+        ("to ten", "ten"),
+        ("minh ten", "ten"),
+        ("to la", "ten"),
+        ("to thich", "so thich"),
+        ("minh thich", "so thich"),
+        ("to yeu", "nguoi yeu"),
+        ("to buon vi", "tam trang gan day"),
+        ("to dang hoc", "hoc"),
+        ("to lam", "cong viec"),
     ]
 
     for pattern, key in intro_patterns:
@@ -247,11 +340,14 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 async def on_ready():
     print()
     print("=" * 60)
-    print(f"🐧 GẤU KẸO BOT ONLINE!")
+    print("GAU KEO BOT ONLINE!")
     print("=" * 60)
     print(f"Bot: {bot.user}")
-    print(f"Channel: {ALLOWED_CHANNEL_ID}")
-    print(f"Model: {MODEL_ID}")
+    print(f"Mode: {MODEL_MODE.upper()}")
+    if ALLOWED_CHANNEL_ID != 0:
+        print(f"Channel: {ALLOWED_CHANNEL_ID}")
+    else:
+        print("Channel: All channels")
     print("=" * 60)
     print()
 
@@ -291,67 +387,72 @@ async def on_message(message):
 # ============================================
 @bot.command(name='clear')
 async def clear_history(ctx):
-    """Clear conversation history with Gấu"""
+    """Clear conversation history with Gau"""
     user_id = str(ctx.author.id)
     memory.clear_conversation(user_id)
-    await ctx.reply("✓ Đã clear conversation history 🐧")
+    await ctx.reply("Da clear conversation history")
 
 @bot.command(name='info')
 async def show_info(ctx):
-    """Show what Gấu remembers about you"""
+    """Show what Gau remembers about you"""
     user_id = str(ctx.author.id)
     user_info = memory.get_user_info(user_id)
 
     if user_info:
-        info_str = "\n".join([f"• {k}: {v}" for k, v in user_info.items()])
-        await ctx.reply(f"🐧 Tớ nhớ về cậu:\n{info_str}")
+        info_str = "\n".join([f"- {k}: {v}" for k, v in user_info.items()])
+        await ctx.reply(f"To nho ve cau:\n{info_str}")
     else:
-        await ctx.reply("🐧 Tớ chưa biết gì về cậu cả... chat thêm đi nha!")
+        await ctx.reply("To chua biet gi ve cau ca... chat them di nha!")
 
 @bot.command(name='forget')
 async def forget_info(ctx):
-    """Make Gấu forget everything about you"""
+    """Make Gau forget everything about you"""
     user_id = str(ctx.author.id)
     if user_id in memory.user_memories:
         del memory.user_memories[user_id]
         memory.save_memories()
     memory.clear_conversation(user_id)
-    await ctx.reply("✓ Đã quên hết về cậu rồi 🐧")
+    await ctx.reply("Da quen het ve cau roi")
 
 @bot.command(name='remember')
 async def remember_info(ctx, key: str, *, value: str):
-    """Tell Gấu to remember something about you
+    """Tell Gau to remember something about you
 
-    Usage: !remember tên An
-           !remember sở_thích code
+    Usage: !remember ten An
+           !remember so_thich code
     """
     user_id = str(ctx.author.id)
     memory.update_user_info(user_id, key, value)
-    await ctx.reply(f"✓ Đã nhớ {key}: {value} 🐧")
+    await ctx.reply(f"Da nho {key}: {value}")
+
+@bot.command(name='mode')
+async def show_mode(ctx):
+    """Show current model mode"""
+    await ctx.reply(f"Mode: {MODEL_MODE.upper()}")
 
 # ============================================
 # MAIN
 # ============================================
 if __name__ == "__main__":
     if not DISCORD_TOKEN or DISCORD_TOKEN == "your-discord-bot-token-here":
-        print("❌ Cần DISCORD_TOKEN trong file .env!")
+        print("Can DISCORD_TOKEN trong file .env!")
         print()
-        print("Cách lấy token:")
-        print("  1. Vào https://discord.com/developers/applications")
-        print("  2. Tạo Application mới")
-        print("  3. Vào Bot → Reset Token → Copy")
-        print("  4. Paste vào .env: DISCORD_TOKEN=your-token")
+        print("Cach lay token:")
+        print("  1. Vao https://discord.com/developers/applications")
+        print("  2. Tao Application moi")
+        print("  3. Vao Bot -> Reset Token -> Copy")
+        print("  4. Paste vao .env: DISCORD_TOKEN=your-token")
         print()
-        print("Cách invite bot:")
-        print("  1. Vào OAuth2 → URL Generator")
+        print("Cach invite bot:")
+        print("  1. Vao OAuth2 -> URL Generator")
         print("  2. Scopes: bot")
         print("  3. Bot Permissions: Send Messages, Read Message History")
-        print("  4. Copy URL và mở trong browser")
+        print("  4. Copy URL va mo trong browser")
         exit(1)
 
-    if not OPENAI_API_KEY:
-        print("❌ Cần OPENAI_API_KEY trong file .env!")
+    if MODEL_MODE == "openai" and not OPENAI_API_KEY:
+        print("Can OPENAI_API_KEY trong file .env!")
         exit(1)
 
-    print("🚀 Starting Gấu Kẹo Bot...")
+    print("Starting Gau Keo Bot...")
     bot.run(DISCORD_TOKEN)
