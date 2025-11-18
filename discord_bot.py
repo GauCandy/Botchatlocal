@@ -142,7 +142,7 @@ else:  # local
     # Load model with LoRA weights
     model = AutoModelForCausalLM.from_pretrained(
         base_model_name,
-        torch_dtype=torch.float16,
+        dtype=torch.float16,
         device_map="auto",
         trust_remote_code=True
     )

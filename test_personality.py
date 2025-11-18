@@ -155,7 +155,7 @@ else:  # local
     # Load model with LoRA weights
     model = AutoModelForCausalLM.from_pretrained(
         base_model_name,
-        torch_dtype=torch.float16,
+        dtype=torch.float16,
         device_map="auto",
         trust_remote_code=True
     )
@@ -164,9 +164,9 @@ else:  # local
     model = PeftModel.from_pretrained(model, model_path)
     model.eval()
 
-    print("Model loaded!")
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("Model loaded!")
+    print(f"Device: {device.upper()}")
 
     if device == "cuda":
         print(f"GPU: {torch.cuda.get_device_name(0)}")
