@@ -1,8 +1,64 @@
-# Core dependencies
-openai>=1.12.0
-python-dotenv>=1.0.0
+# ===========================================
+# 🐧 GẤU KẸO - DEPENDENCIES
+# ===========================================
 
-# Optional: For generators (not needed for training)
+# -----------------------------------------
+# CORE (Bắt buộc)
+# -----------------------------------------
+python-dotenv>=1.0.0
+tqdm>=4.66.1
+
+# -----------------------------------------
+# OPENAI TRAINING (Cloud - Recommend)
+# -----------------------------------------
+openai>=1.12.0
+httpx>=0.25.0
+
+# -----------------------------------------
+# GENERATORS (Optional - tạo data)
+# -----------------------------------------
 aiohttp>=3.9.1
 anthropic>=0.8.1
-tqdm>=4.66.1
+
+# -----------------------------------------
+# LOCAL GPU TRAINING (Offline - Optional)
+# -----------------------------------------
+# NOTE: Cài PyTorch với CUDA TRƯỚC khi cài các packages này!
+#
+# Windows/Linux với NVIDIA GPU:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#
+# Sau đó mới cài:
+transformers>=4.45.0
+datasets>=2.14.0
+trl>=0.9.0
+accelerate>=0.25.0
+bitsandbytes>=0.41.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0
+
+# Unsloth - CÀI RIÊNG (không qua requirements.txt):
+#   pip install unsloth
+
+# -----------------------------------------
+# INSTALLATION
+# -----------------------------------------
+#
+# === Option A: OpenAI Training (Đơn giản) ===
+#   pip install -r requirements.txt
+#   python train_openai.py
+#
+# === Option B: Local GPU Training (RTX 3050+) ===
+#   Step 1: Cài PyTorch CUDA
+#     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#
+#   Step 2: Cài requirements
+#     pip install -r requirements.txt
+#
+#   Step 3: Cài unsloth
+#     pip install unsloth
+#
+#   Step 4: Train
+#     python train_local_gpu.py
+#
+# -----------------------------------------
