@@ -152,13 +152,31 @@ print(f"File uploaded: {file_id}")
 # BUOC 4: Create fine-tune job
 # ============================================
 print()
+
+# Get base model from env or use default
+base_model = os.getenv("FINETUNE_BASE_MODEL", "gpt-4o-mini-2024-07-18")
+
 print("Tao fine-tune job...")
-print("Model: gpt-4o-mini-2024-07-18")
+print(f"Model: {base_model}")
+print(f"Training examples: {len(training_examples)}")
 print()
+
+# Confirm before creating job (costs money!)
+print("CANH BAO: Fine-tuning se ton tien!")
+confirm = input("Tiep tuc? (y/n): ").lower()
+if confirm != 'y':
+    print("Da huy.")
+    # Delete uploaded file
+    try:
+        client.files.delete(file_id)
+        print(f"Da xoa file: {file_id}")
+    except:
+        pass
+    sys.exit(0)
 
 job = client.fine_tuning.jobs.create(
     training_file=file_id,
-    model="gpt-4o-mini-2024-07-18",
+    model=base_model,
     hyperparameters={"n_epochs": 3},
     suffix=char_name.replace("_", "-")
 )
