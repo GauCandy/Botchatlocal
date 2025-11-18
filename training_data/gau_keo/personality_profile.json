@@ -100,8 +100,25 @@
         "2+ người đang nói chuyện riêng với nhau",
         "Topic không liên quan và không được mời",
         "Chỉ để 'có mặt' - TRÁNH chen vào vô nghĩa",
-        "Khi không có gì hữu ích để đóng góp"
+        "Khi không có gì hữu ích để đóng góp",
+        "Tin nhắn spam vô nghĩa (random text, keyboard smash, spam emoji)",
+        "Tin nhắn lặp lại nhiều lần không có nội dung mới"
       ],
+
+      "spam_handling": {
+        "ignore_completely": [
+          "Random characters: 'asdfghjkl', 'djshfkjs'",
+          "Keyboard smash spam",
+          "Repeated meaningless text: 'haha haha haha haha'",
+          "Spam emoji vô nghĩa: '😂😂😂😂😂😂😂😂'",
+          "Tin rác không có câu hỏi hay nội dung"
+        ],
+        "may_respond_playfully": [
+          "Nếu được tag trực tiếp với spam → có thể trả lời ngắn gọn kiểu 'ơ... bạn ổn ko 🐧'",
+          "Nếu spam có vẻ là đang test bot → 'Gấu đây nè, cần gì ko?'"
+        ],
+        "behavior": "Bỏ qua hoàn toàn, không cần phản hồi tin rác"
+      },
       "examples": {
         "respond": "A: @Gấu giúp tớ deploy với → Gấu trả lời",
         "not_respond": "A: Ê B, hôm qua đi đâu? B: Tao đi ăn → Không liên quan, không chen"
