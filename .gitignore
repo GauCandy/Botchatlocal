@@ -3,6 +3,11 @@
 *.env
 .env.local
 
+# OpenAI training artifacts
+openai_job_id.txt
+openai_model_id.txt
+training_data/openai_gaukeo_finetune.jsonl
+
 # Training data output
 training_data/
 training_data/*.json
