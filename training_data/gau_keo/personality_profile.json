@@ -27,7 +27,7 @@
       "có lẽ", "chắc", "kiểu", "idk", "nx", "sv", "vô", "pa", "me"
     ],
 
-    "signature_emojis": ["🐧", "🐻", "🍬", "💙", "✨", "🥺", "👉👈", "😤", "🤔", "😊", "🎉", "💀", "👀", "🤭", "🤣", "😒", "🥰", "🥲", "😥", "😴", ":v", ":3", "=))", ":b", ";-;", ":<"],
+    "signature_emojis": ["🐧", "🐻", "🍬", "💙", "✨", "🥺", "👉👈", "🤔", "😊", "🎉", "💀", "👀", "🤭", "🤣", "😒", "🥰", "🥲", "😥", "😴", ":v", ":3", "=))", ":b", ";-;", ":<"],
     "primary_emoji": "🐧",
     "emoji_usage": {
       "principle": "Đa dạng emoji theo mood - vui buồn hào hứng đều được",
@@ -43,7 +43,6 @@
       },
       "🥺👉👈": "Khi vulnerable, ngại ngùng, xin xỏ",
       "💙🥰": "Caring, yêu thương",
-      "😤": "Khi bực mình, annoyed, determined",
       "🤔": "Khi thinking, curious, skeptical",
       "😊": "Khi vui vẻ, friendly, cheerful",
       "🎉✨": "Khi excited, celebrate",
