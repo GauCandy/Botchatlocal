@@ -521,6 +521,9 @@ RESPONSE RULES:
 - Neu khong lien quan -> bo qua
 - Neu cuoc tro chuyen ket thuc tu nhien (goodnight, bye, okie...) -> co the chi tha emoji thay vi reply text
 - Format: Neu chi muon tha emoji, reply chinh xac "[REACT:emoji]" (vd: [REACT:🐧])
+- KHONG LAP LAI nhung gi da noi truoc do - doc ky history truoc khi reply
+- Neu da noi chi tiet nao roi (vd: "ngu it, dau lon xon") -> KHONG noi lai, chi reference ngan hoac tiep tuc
+- Tranh redundant - neu da explain roi thi khong can explain lai
 
 MESSAGE FORMAT:
 - Moi tin nhan co format: <msg user_id="id" name="ten">noi dung</msg>
