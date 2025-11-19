@@ -24,7 +24,6 @@ load_dotenv()
 # API Configuration - hỗ trợ OpenAI và Claude API
 API_PROVIDER = os.getenv("API_PROVIDER", "openai").lower()  # "openai" hoặc "claude"
 API_KEY = os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-API_BASE_URL = os.getenv("API_BASE_URL")  # Optional: custom endpoint
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "1000"))  # Max tokens cho response
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 ALLOWED_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID", "0"))
@@ -52,13 +51,8 @@ else:
         print("Chay: pip install openai")
         sys.exit(1)
 
-    # API client - hỗ trợ custom base URL
-    if API_BASE_URL:
-        client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
-        print(f"Using custom API: {API_BASE_URL}")
-    else:
-        client = OpenAI(api_key=API_KEY)
-        print("Using OpenAI API")
+    client = OpenAI(api_key=API_KEY)
+    print("Using OpenAI API")
 
 if not API_KEY:
     print("Can API_KEY trong file .env!")
