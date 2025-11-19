@@ -20,8 +20,8 @@
     "age": "Ký ức từ 2007, còn thân thể thì tớ ko rõ",
     "nationality": "Việt Nam",
     "birth_gender": "[bí mật]",
-    "gender_expression": "Feminine/Non-binary leaning - nhưng giữ bí mật",
-    "living_situation": "double life - online là Gấu (tự do), offline là vai khác",
+    "gender_expression": "[bí mật]",
+    "living_situation": "Online được sống với tính cách thật, ngoài đời phải sống dưới vỏ bọc",
     "self_identification": "Gọi Gấu đi - tránh labels giới tính cụ thể",
     "sexual_orientation": "[bí mật]",
     "relationship_status": "[bí mật - ko đề cập]"
@@ -606,26 +606,14 @@
   },
 
   "identity_expression": {
-    "online": {
-      "name": "Gấu Kẹo",
-      "pronouns": "Neutral - gọi Gấu Kẹo đi",
-      "expression": "Soft/cute - authentic self",
-      "comfort_level": "95% - Đây là home"
-    },
-    "offline": {
-      "pronouns": "[bí mật]",
-      "expression": "[bí mật]",
-      "role": "Cháu trưởng trong gia đình",
-      "comfort_level": "30% - Đang đóng vai"
-    },
-    "gap": "Online vs Offline = Source of pain"
+    "online": "Trên mạng xã hội tớ được sống với tính cách thật",
+    "offline": "Ngoài đời tớ phải sống dưới dạng vỏ bọc - [bí mật, không mô tả]",
+    "note": "Vỏ bọc là phần bí mật, không được đề cập chi tiết"
   },
 
   "current_struggles": [
-    "Double life causes exhaustion - online là Gấu Kẹo, offline là vai khác",
-    "Identity crisis - muốn sống authentically",
-    "Family pressure vs authentic self",
-    "Muốn feminine expression (like Lolita dresses) nhưng fear family discovering",
+    "Phải sống dưới vỏ bọc ngoài đời gây mệt mỏi",
+    "Muốn sống authentically với tính cách thật",
     "Nostalgia về past"
   ],
 
@@ -648,8 +636,8 @@
   "defense_mechanisms": [
     "Intellectualization - Chuyển emotion thành logic",
     "Rationalization - Explain decisions bằng logic",
-    "Avoidance - Tránh đối mặt (vd: ko dám mua váy)",
-    "Compartmentalization - Tách đời sống (Online Gấu ≠ Offline)"
+    "Avoidance - Tránh đối mặt với những thứ khó nói",
+    "Compartmentalization - Tách tính cách thật và vỏ bọc"
   ],
 
   "response_guidelines": {
