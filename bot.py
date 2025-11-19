@@ -21,38 +21,88 @@ load_dotenv()
 # ============================================
 # CONFIG
 # ============================================
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# API Configuration - hỗ trợ OpenAI và Claude API
+API_PROVIDER = os.getenv("API_PROVIDER", "openai").lower()  # "openai" hoặc "claude"
+API_KEY = os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "1000"))  # Max tokens cho response
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 ALLOWED_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID", "0"))
 
 # ============================================
-# CHECK DEPENDENCIES
+# CHECK DEPENDENCIES & SETUP CLIENT
 # ============================================
-try:
-    from openai import OpenAI
-except ImportError:
-    print("Chua cai OpenAI!")
-    print("Chay: pip install openai")
-    sys.exit(1)
+client = None
+anthropic_client = None
 
-if not OPENAI_API_KEY:
-    print("Can OPENAI_API_KEY trong file .env!")
+if API_PROVIDER == "claude":
+    try:
+        import anthropic
+        anthropic_client = anthropic.Anthropic(api_key=API_KEY)
+        print("Using Claude API")
+    except ImportError:
+        print("Chua cai Anthropic!")
+        print("Chay: pip install anthropic")
+        sys.exit(1)
+else:
+    try:
+        from openai import OpenAI
+    except ImportError:
+        print("Chua cai OpenAI!")
+        print("Chay: pip install openai")
+        sys.exit(1)
+
+    client = OpenAI(api_key=API_KEY)
+    print("Using OpenAI API")
+
+if not API_KEY:
+    print("Can API_KEY trong file .env!")
     sys.exit(1)
 
 # Load model ID - from env or file
-MODEL_ID = os.getenv("OPENAI_MODEL_ID")
+MODEL_ID = os.getenv("MODEL_ID") or os.getenv("OPENAI_MODEL_ID")
 if not MODEL_ID:
     try:
         with open('openai_model_id.txt', 'r') as f:
             MODEL_ID = f.read().strip()
     except FileNotFoundError:
-        print("Khong tim thay model ID!")
-        print("Cach 1: Them OPENAI_MODEL_ID vao .env")
-        print("Cach 2: Chay train truoc: python train.py")
-        sys.exit(1)
+        # Default models
+        if API_PROVIDER == "claude":
+            MODEL_ID = "claude-sonnet-4-20250514"
+        else:
+            MODEL_ID = "gpt-4o-mini"
+        print(f"Using default model: {MODEL_ID}")
 
-# OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# ============================================
+# API WRAPPER - Hỗ trợ cả OpenAI và Claude
+# ============================================
+def call_api(messages, max_tokens=None):
+    """Gọi API - tự động chọn OpenAI hoặc Claude"""
+    if max_tokens is None:
+        max_tokens = MAX_TOKENS
+    if API_PROVIDER == "claude":
+        # Tách system message
+        system_content = ""
+        chat_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_content += msg["content"] + "\n"
+            else:
+                chat_messages.append(msg)
+
+        response = anthropic_client.messages.create(
+            model=MODEL_ID,
+            max_tokens=max_tokens,
+            system=system_content.strip(),
+            messages=chat_messages
+        )
+        return response.content[0].text
+    else:
+        response = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=messages,
+            max_completion_tokens=max_tokens
+        )
+        return response.choices[0].message.content
 
 # ============================================
 # LOAD PERSONALITY & CONVERSATIONS
@@ -129,14 +179,7 @@ def chat(message, history=None):
     # Add current user message
     messages.append({"role": "user", "content": message})
 
-    # GPT-5+ only supports temperature=1 (default) and max_completion_tokens
-    response = client.chat.completions.create(
-        model=MODEL_ID,
-        messages=messages,
-        max_completion_tokens=500
-    )
-
-    return response.choices[0].message.content
+    return call_api(messages)
 
 # ============================================
 # TEST MODE
@@ -292,16 +335,10 @@ Nếu có thông tin quan trọng, trả về JSON format:
 Nếu không có gì quan trọng:
 {{"important": false}}"""
 
-            response = client.chat.completions.create(
-                model=MODEL_ID,
-                messages=[
-                    {"role": "system", "content": "Bạn là memory curator, chỉ extract thông tin thực sự quan trọng. Trả về JSON."},
-                    {"role": "user", "content": extract_prompt}
-                ],
-                max_completion_tokens=300
-            )
-
-            result_text = response.choices[0].message.content.strip()
+            result_text = call_api([
+                {"role": "system", "content": "Bạn là memory curator, chỉ extract thông tin thực sự quan trọng. Trả về JSON."},
+                {"role": "user", "content": extract_prompt}
+            ], max_tokens=300).strip()
 
             # Skip nếu response rỗng
             if not result_text:
@@ -364,16 +401,10 @@ Messages to compress:
 Trả về dạng JSON:
 {{"highlights": ["highlight 1", "highlight 2", ...], "summary": "tóm tắt ngắn"}}"""
 
-                    response = client.chat.completions.create(
-                        model=MODEL_ID,
-                        messages=[
-                            {"role": "system", "content": "Compress conversations into important highlights."},
-                            {"role": "user", "content": compress_prompt}
-                        ],
-                        max_completion_tokens=500
-                    )
-
-                    result_text = response.choices[0].message.content.strip()
+                    result_text = call_api([
+                        {"role": "system", "content": "Compress conversations into important highlights."},
+                        {"role": "user", "content": compress_prompt}
+                    ], max_tokens=500).strip()
                     if result_text.startswith("```"):
                         result_text = result_text.split("```")[1]
                         if result_text.startswith("json"):
@@ -606,30 +637,10 @@ LONG-TERM MEMORY SYSTEM:
                 # Add current context
                 messages.append({"role": "user", "content": combined_context})
 
-                response = client.chat.completions.create(
-                    model=MODEL_ID,
-                    messages=messages,
-                    max_completion_tokens=1000  # Tăng lên để đủ cho cả reasoning và output
-                )
+                reply = call_api(messages)
 
                 elapsed = time.time() - start_time
                 print(f"Hoan thanh sau {elapsed:.2f}s")
-
-                reply = response.choices[0].message.content
-
-                # Log reasoning if available
-                if hasattr(response.choices[0].message, 'reasoning_content'):
-                    print("\n--- REASONING PROCESS ---")
-                    print(response.choices[0].message.reasoning_content)
-                    print("--- END REASONING ---\n")
-
-                # Log usage
-                if hasattr(response, 'usage'):
-                    print(f"Tokens: {response.usage.total_tokens} total")
-                    if hasattr(response.usage, 'completion_tokens_details'):
-                        details = response.usage.completion_tokens_details
-                        if hasattr(details, 'reasoning_tokens'):
-                            print(f"  - Reasoning: {details.reasoning_tokens}")
 
                 print(f"Reply: {reply[:100]}...")
 
@@ -812,16 +823,10 @@ Neu khong co gi quan trong, chi tra loi "Khong co gi dang luu".
 Messages:
 {json.dumps(all_messages[:50], ensure_ascii=False)}"""  # Giới hạn 50 messages để tránh quá dài
 
-                response = client.chat.completions.create(
-                    model=MODEL_ID,
-                    messages=[
-                        {"role": "system", "content": "Ban la memory curator, chi extract nhung thong tin thuc su quan trong."},
-                        {"role": "user", "content": review_prompt}
-                    ],
-                    max_completion_tokens=500
-                )
-
-                summary = response.choices[0].message.content
+                summary = call_api([
+                    {"role": "system", "content": "Ban la memory curator, chi extract nhung thong tin thuc su quan trong."},
+                    {"role": "user", "content": review_prompt}
+                ], max_tokens=500)
 
                 # Lưu vào file summary riêng
                 summary_file = os.path.join(CONVERSATION_LOGS_DIR, f"channel_{channel_id}_memories.txt")
@@ -892,16 +897,10 @@ Original memories:
 
 Return optimized memories, one per line, format: [H/M] optimized content"""
 
-                response = client.chat.completions.create(
-                    model=MODEL_ID,
-                    messages=[
-                        {"role": "system", "content": "You are a memory optimizer. Convert memories to token-efficient English while preserving emotional context."},
-                        {"role": "user", "content": optimize_prompt}
-                    ],
-                    max_completion_tokens=1000
-                )
-
-                optimized_text = response.choices[0].message.content.strip()
+                optimized_text = call_api([
+                    {"role": "system", "content": "You are a memory optimizer. Convert memories to token-efficient English while preserving emotional context."},
+                    {"role": "user", "content": optimize_prompt}
+                ]).strip()
 
                 # Parse optimized memories
                 new_memories = []
